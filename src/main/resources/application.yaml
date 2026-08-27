@@ -17,7 +17,6 @@ spring:
     properties:
       hibernate:
         format_sql: true
-        default_schema: roster
     open-in-view: false
 
   flyway:
