@@ -20,6 +20,7 @@ public class Store {
 
     @Id
     private UUID id;
+    @Column(nullable = false, length = 120)
     private String name;
     private String address;
     @CreationTimestamp
