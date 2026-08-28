@@ -22,14 +22,12 @@ CREATE TABLE employee (
     email       VARCHAR(150) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     role_id     UUID NOT NULL REFERENCES role(id),
-    store_id    UUID NOT NULL REFERENCES store(id),
     status      VARCHAR(20) NOT NULL DEFAULT 'ACTIVE'
                 CHECK (status IN ('ACTIVE', 'INACTIVE')),
     created_at  TIMESTAMP NOT NULL DEFAULT now(),
     updated_at  TIMESTAMP NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_employee_store ON employee(store_id);
 CREATE INDEX idx_employee_role ON employee(role_id);
 
 -- Turno
