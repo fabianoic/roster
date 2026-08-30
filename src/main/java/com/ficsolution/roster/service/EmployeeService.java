@@ -1,7 +1,9 @@
 package com.ficsolution.roster.service;
 
 import com.ficsolution.roster.exception.EmployeeNotFoundException;
+import com.ficsolution.roster.exception.PasswordNotEqualException;
 import com.ficsolution.roster.model.Employee;
+import com.ficsolution.roster.model.Role;
 import com.ficsolution.roster.model.enumModel.EmployeeStatus;
 import com.ficsolution.roster.repository.EmployeeRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +19,9 @@ public class EmployeeService {
     @Autowired
     private EmployeeRepository employeeRepository;
 
+    @Autowired
+    private RoleService roleService;
+
     public Employee createEmployee(Employee employee) {
         return employeeRepository.save(employee);
     }
@@ -29,10 +34,14 @@ public class EmployeeService {
         return employeeRepository.findById(id).orElseThrow(() -> new EmployeeNotFoundException("Employee not found, id: " + id));
     }
 
-    public Employee updateEmployee(UUID id, Employee editEmployee) {
+    public Employee updateEmployeeInfo(UUID id, Employee newEmployeeInfo) {
         Employee employee = retrieveEmployeeById(id);
-        employee.setName(editEmployee.getName());
-        employee.setEmail(editEmployee.getEmail());
+        employee.setName(newEmployeeInfo.getName());
+
+        Role newRole = roleService.retrieveById(newEmployeeInfo.getRole().getId());
+        employee.setRole(newRole);
+        employee.setEmail(newEmployeeInfo.getEmail());
+
         employee.setUpdatedAt(LocalDateTime.now());
 
         return employeeRepository.save(employee);
@@ -47,5 +56,19 @@ public class EmployeeService {
         employee.setUpdatedAt(LocalDateTime.now());
 
         return employeeRepository.save(employee);
+    }
+
+    public Employee changeEmployeePassword(UUID id, String oldPassword, String newPassword) {
+        Employee employee = retrieveEmployeeById(id);
+        if (oldPassword.equals(employee.getPassword()) && isValidPassword(newPassword)) {
+            employee.setPassword(newPassword);
+            return employeeRepository.save(employee);
+        }
+        throw new PasswordNotEqualException("The old password is not correct!");
+    }
+
+    private boolean isValidPassword(String newPassword) {
+        //develop more security validation
+        return newPassword != null && !newPassword.isBlank();
     }
 }

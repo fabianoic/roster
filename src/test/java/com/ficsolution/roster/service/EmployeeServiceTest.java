@@ -1,6 +1,7 @@
 package com.ficsolution.roster.service;
 
 import com.ficsolution.roster.exception.EmployeeNotFoundException;
+import com.ficsolution.roster.exception.PasswordNotEqualException;
 import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.model.Role;
 import com.ficsolution.roster.model.enumModel.EmployeeStatus;
@@ -29,6 +30,9 @@ public class EmployeeServiceTest {
 
     @Mock
     private EmployeeRepository employeeRepository;
+
+    @Mock
+    private RoleService roleService;
 
     private UUID id = UUID.randomUUID();
 
@@ -106,7 +110,35 @@ public class EmployeeServiceTest {
     }
 
     @Test
-    void testUpdateEmployeeNameAndEmail() {
+    void testUpdateEmployeeInfoNameAndEmail() {
+        Role role = new Role(UUID.fromString("df501f58-dc8a-470c-a26d-5786633b6009"), "STAFF");
+        Employee employee = new Employee(id, "Fabiano Campos",
+                "fabiano.fic@gmail.com",
+                "RANDOMHASHPASSWORD",
+                role,
+                EmployeeStatus.ACTIVE,
+                LocalDateTime.now(),
+                LocalDateTime.now());
+        Employee editEmployee = new Employee(id, "Oscar",
+                "oscar@gmail.com",
+                "RANDOMHASHPASSWORD",
+                role,
+                EmployeeStatus.ACTIVE,
+                LocalDateTime.now(),
+                LocalDateTime.now());
+        when(employeeRepository.findById(id)).thenReturn(Optional.of(employee));
+        when(employeeRepository.save(any(Employee.class))).thenReturn(editEmployee);
+        when(roleService.retrieveById(any(UUID.class))).thenReturn(role);
+
+        Employee updatedEmployee = employeeService.updateEmployeeInfo(id, employee);
+
+        assertNotNull(updatedEmployee);
+        assertEquals("Oscar", updatedEmployee.getName());
+        assertEquals("oscar@gmail.com", updatedEmployee.getEmail());
+    }
+
+    @Test
+    void testUpdateEmployeePassword() {
         Employee employee = new Employee(id, "Fabiano Campos",
                 "fabiano.fic@gmail.com",
                 "RANDOMHASHPASSWORD",
@@ -114,21 +146,54 @@ public class EmployeeServiceTest {
                 EmployeeStatus.ACTIVE,
                 LocalDateTime.now(),
                 LocalDateTime.now());
-        Employee editEmployee = new Employee(id, "Oscar",
-                "oscar@gmail.com",
+        Employee employeeNewPassword = new Employee(id, "Fabiano Campos",
+                "fabiano.fic@gmail.com",
+                "NEWRANDOMHASHPASSWORD",
+                new Role(UUID.fromString("df501f58-dc8a-470c-a26d-5786633b6009"), "STAFF"),
+                EmployeeStatus.ACTIVE,
+                LocalDateTime.now(),
+                LocalDateTime.now());
+        when(employeeRepository.findById(id)).thenReturn(Optional.of(employee));
+        when(employeeRepository.save(any(Employee.class))).thenReturn(employeeNewPassword);
+
+        Employee updatedEmployee = employeeService.changeEmployeePassword(id, employee.getPassword(), employeeNewPassword.getPassword());
+
+        assertNotNull(updatedEmployee);
+        assertEquals("NEWRANDOMHASHPASSWORD", updatedEmployee.getPassword());
+        verify(employeeRepository, times(1)).findById(id);
+        verify(employeeRepository, times(1)).save(employeeNewPassword);
+    }
+
+    @Test
+    void testUpdateEmployeePassword_oldPasswordNotEqual() {
+        Employee employee = new Employee(id, "Fabiano Campos",
+                "fabiano.fic@gmail.com",
                 "RANDOMHASHPASSWORD",
                 new Role(UUID.fromString("df501f58-dc8a-470c-a26d-5786633b6009"), "STAFF"),
                 EmployeeStatus.ACTIVE,
                 LocalDateTime.now(),
                 LocalDateTime.now());
         when(employeeRepository.findById(id)).thenReturn(Optional.of(employee));
-        when(employeeRepository.save(any(Employee.class))).thenReturn(editEmployee);
 
-        Employee updatedEmployee = employeeService.updateEmployee(id, employee);
+        assertThrows(PasswordNotEqualException.class, () -> employeeService.changeEmployeePassword(id, "WRONGRANDOMHASHPASSWORD", null));
+        verify(employeeRepository, times(1)).findById(id);
+        verify(employeeRepository, times(0)).save(any(Employee.class));
+    }
 
-        assertNotNull(updatedEmployee);
-        assertEquals("Oscar", updatedEmployee.getName());
-        assertEquals("oscar@gmail.com", updatedEmployee.getEmail());
+    @Test
+    void testUpdateEmployeePassword_newPasswordIsNull() {
+        Employee employee = new Employee(id, "Fabiano Campos",
+                "fabiano.fic@gmail.com",
+                "RANDOMHASHPASSWORD",
+                new Role(UUID.fromString("df501f58-dc8a-470c-a26d-5786633b6009"), "STAFF"),
+                EmployeeStatus.ACTIVE,
+                LocalDateTime.now(),
+                LocalDateTime.now());
+        when(employeeRepository.findById(id)).thenReturn(Optional.of(employee));
+
+        assertThrows(PasswordNotEqualException.class, () -> employeeService.changeEmployeePassword(id, "RANDOMHASHPASSWORD", null));
+        verify(employeeRepository, times(1)).findById(id);
+        verify(employeeRepository, times(0)).save(any(Employee.class));
     }
 
     @Test
