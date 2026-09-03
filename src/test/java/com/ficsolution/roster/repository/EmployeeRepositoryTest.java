@@ -11,11 +11,11 @@ import org.springframework.context.annotation.Import;
 import org.testcontainers.utility.TestcontainersConfiguration;
 
 import java.time.LocalDateTime;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static com.ficsolution.roster.util.Util.employeeId;
 import static org.junit.jupiter.api.Assertions.*;
 
 @DataJpaTest
@@ -26,11 +26,10 @@ public class EmployeeRepositoryTest {
     @Autowired
     private EmployeeRepository employeeRepository;
 
-    private UUID id = UUID.randomUUID();
-
     @Test
     void testCreateEmployee() {
         // arrange
+        UUID id = UUID.randomUUID();
         Employee employee = new Employee(id, "Fabiano Campos",
                 "fabiano.fic@gmail.com",
                 "RANDOMHASHPASSWORD",
@@ -50,59 +49,25 @@ public class EmployeeRepositoryTest {
 
     @Test
     void testRetrieveAllEmployees() {
-        List<Employee> employees = Arrays.asList(
-                new Employee(id, "Fabiano Campos",
-                        "fabiano.fic@gmail.com",
-                        "RANDOMHASHPASSWORD",
-                        new Role(UUID.fromString("df501f58-dc8a-470c-a26d-5786633b6009"), "STAFF"),
-                        EmployeeStatus.ACTIVE,
-                        LocalDateTime.now(),
-                        LocalDateTime.now()),
-                new Employee(UUID.randomUUID(), "Oscar",
-                        "oscar@gmail.com",
-                        "RANDOMHASHPASSWORD",
-                        new Role(UUID.fromString("df501f58-dc8a-470c-a26d-5786633b6009"), "STAFF"),
-                        EmployeeStatus.ACTIVE,
-                        LocalDateTime.now(),
-                        LocalDateTime.now())
-        );
-        employeeRepository.saveAll(employees);
-
         List<Employee> retrievedAllEmployees = employeeRepository.findAll();
 
         assertFalse(retrievedAllEmployees.isEmpty());
-        assertEquals(2, retrievedAllEmployees.size());
-        assertEquals("Oscar", retrievedAllEmployees.get(1).getName());
+        assertEquals(5, retrievedAllEmployees.size());
+        assertEquals("Ana Silva", retrievedAllEmployees.get(0).getName());
     }
 
     @Test
     void testRetrieveEmployeeById() {
-        Employee employee = new Employee(id, "Fabiano Campos",
-                "fabiano.fic@gmail.com",
-                "RANDOMHASHPASSWORD",
-                new Role(UUID.fromString("df501f58-dc8a-470c-a26d-5786633b6009"), "STAFF"),
-                EmployeeStatus.ACTIVE,
-                LocalDateTime.now(),
-                LocalDateTime.now());
-        employeeRepository.save(employee);
-
-        Optional<Employee> retrievedEmployee = employeeRepository.findById(id);
+        Optional<Employee> retrievedEmployee = employeeRepository.findById(employeeId);
 
         assertFalse(retrievedEmployee.isEmpty());
-        assertEquals("Fabiano Campos", retrievedEmployee.get().getName());
-        assertEquals("fabiano.fic@gmail.com", retrievedEmployee.get().getEmail());
+        assertEquals("Ana Silva", retrievedEmployee.get().getName());
+        assertEquals("ana.silva@empresa.com", retrievedEmployee.get().getEmail());
     }
 
     @Test
     void testUpdateEmployeeNameAndPasswordAndStatus() {
-        Employee employee = new Employee(id, "Fabiano Campos",
-                "fabiano.fic@gmail.com",
-                "RANDOMHASHPASSWORD",
-                new Role(UUID.fromString("df501f58-dc8a-470c-a26d-5786633b6009"), "STAFF"),
-                EmployeeStatus.ACTIVE,
-                LocalDateTime.now(),
-                LocalDateTime.now());
-        employeeRepository.save(employee);
+        Employee employee = employeeRepository.findById(employeeId).get();
         employee.setPassword("NEWRANDOMHASHPASSWORD");
         employee.setName("Oscar");
         employee.setStatus(EmployeeStatus.INACTIVE);
@@ -117,17 +82,9 @@ public class EmployeeRepositoryTest {
 
     @Test
     void testDeleteEmployee() {
-        Employee employee = new Employee(id, "Fabiano Campos",
-                "fabiano.fic@gmail.com",
-                "RANDOMHASHPASSWORD",
-                new Role(UUID.fromString("df501f58-dc8a-470c-a26d-5786633b6009"), "STAFF"),
-                EmployeeStatus.ACTIVE,
-                LocalDateTime.now(),
-                LocalDateTime.now());
-        employeeRepository.save(employee);
-
+        Employee employee = employeeRepository.findById(employeeId).get();
         employeeRepository.delete(employee);
 
-        assertFalse(employeeRepository.findById(id).isPresent());
+        assertFalse(employeeRepository.findById(employeeId).isPresent());
     }
 }

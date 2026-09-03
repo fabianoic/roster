@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static com.ficsolution.roster.util.Util.roleId;
 import static org.junit.jupiter.api.Assertions.*;
 
 @DataJpaTest
@@ -50,41 +51,33 @@ public class RoleRepositoryTest {
 
     @Test
     void testFindById() {
-        // arrange
-        Role role = new Role(UUID.randomUUID(), "TEST_ROLE");
-        role = roleRepository.save(role);
         // act
-        Role roleFound = roleRepository.findById(role.getId()).orElse(null);
+        Role roleFound = roleRepository.findById(roleId).orElse(null);
 
         // assert
         assertNotNull(roleFound);
-        assertEquals(role.getId(), roleFound.getId());
-        assertEquals(role.getName(), roleFound.getName());
+        assertEquals(roleId, roleFound.getId());
+        assertEquals("MANAGER", roleFound.getName());
     }
 
     @Test
     void testDeleteRoleById() {
-        // arrange
-        Role role = new Role(UUID.randomUUID(), "TEST_ROLE");
-        role = roleRepository.save(role);
+        Role roleToDelete = roleRepository.findById(roleId).get();
         // act
-        roleRepository.delete(role);
-        Optional<Role> deletedRole = roleRepository.findById(role.getId());
+        roleRepository.delete(roleToDelete);
+        Optional<Role> deletedRole = roleRepository.findById(roleId);
         // assert
         assertFalse(deletedRole.isPresent());
     }
 
     @Test
     void testUpdateRoleName() {
-        // arrange
-        Role role = new Role(UUID.randomUUID(), "TEST_ROLE");
-        roleRepository.save(role);
         // act
-        Role newRoleName = new Role(role.getId(), "ROLE_TEST");
+        Role newRoleName = new Role(roleId, "ROLE_TEST");
         Role updatedRole = roleRepository.save(newRoleName);
         // assert
         assertEquals(newRoleName.getId(), updatedRole.getId());
-        assertNotEquals(updatedRole.getName(), role.getName());
+        assertNotEquals("MANAGER", updatedRole.getName());
         assertEquals(newRoleName.getName(), updatedRole.getName());
     }
 }

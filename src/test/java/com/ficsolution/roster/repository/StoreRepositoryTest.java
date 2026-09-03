@@ -9,11 +9,11 @@ import org.springframework.context.annotation.Import;
 import org.testcontainers.utility.TestcontainersConfiguration;
 
 import java.time.LocalDateTime;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static com.ficsolution.roster.util.Util.storeId;
 import static org.junit.jupiter.api.Assertions.*;
 
 @DataJpaTest
@@ -24,11 +24,10 @@ public class StoreRepositoryTest {
     @Autowired
     private StoreRepository storeRepository;
 
-    private UUID id = UUID.randomUUID();
-
     @Test
     void testCreateStore() {
         // arrange
+        UUID id = UUID.randomUUID();
         Store store = new Store(id, "Ballsbridge", "Shelbourn 01 - Dublin 4", LocalDateTime.now(), LocalDateTime.now());
 
         // act
@@ -44,40 +43,30 @@ public class StoreRepositoryTest {
 
     @Test
     void testRetrieveAllStores() {
-        // arrange
-        List<Store> stores = Arrays.asList(
-                new Store(id, "Ballsbridge", "Shelbourn 01 - Dublin 4", LocalDateTime.now(), LocalDateTime.now()),
-                new Store(UUID.randomUUID(), "Blackrock", "Blackrock Shopping Center", LocalDateTime.now(), LocalDateTime.now()));
-        storeRepository.saveAll(stores);
         // act
         List<Store> retrievedStores = storeRepository.findAll();
 
         // assert
         assertNotNull(retrievedStores);
-        assertEquals(2, retrievedStores.size());
-        assertEquals("Ballsbridge", retrievedStores.get(0).getName());
-        assertEquals("Blackrock", retrievedStores.get(1).getName());
+        assertEquals(4, retrievedStores.size());
+        assertEquals("Loja Centro", retrievedStores.get(0).getName());
+        assertEquals("Loja Shopping Plaza", retrievedStores.get(1).getName());
     }
 
     @Test
     void testRetrieveStoreById() {
-        // arrange
-        Store store = new Store(id, "Ballsbridge", "Shelbourn 01 - Dublin 4", LocalDateTime.now(), LocalDateTime.now());
-        storeRepository.save(store);
-
         // act
-        Optional<Store> retrievedStore = storeRepository.findById(id);
+        Optional<Store> retrievedStore = storeRepository.findById(storeId);
 
         // assert
         assertFalse(retrievedStore.isEmpty());
-        assertEquals("Ballsbridge", retrievedStore.get().getName());
+        assertEquals("Loja Centro", retrievedStore.get().getName());
     }
 
     @Test
     void testUpdateStoreNameAndAddress() {
         // arrange
-        Store store = new Store(id, "Ballsbridge", "Shelbourn 01 - Dublin 4", LocalDateTime.now(), LocalDateTime.now());
-        storeRepository.save(store);
+        Store store = storeRepository.findById(storeId).get();
         store.setName("Blackrock");
         store.setAddress("Blackrock Shopping Center");
 
@@ -93,12 +82,11 @@ public class StoreRepositoryTest {
     @Test
     void testDeleteStore() {
         // arrange
-        Store store = new Store(id, "Ballsbridge", "Shelbourn 01 - Dublin 4", LocalDateTime.now(), LocalDateTime.now());
-        storeRepository.save(store);
+        Store store = storeRepository.findById(storeId).get();
 
         // act
         storeRepository.delete(store);
-        Optional<Store> deletedStore = storeRepository.findById(id);
+        Optional<Store> deletedStore = storeRepository.findById(storeId);
 
         // assert
         assertFalse(deletedStore.isPresent());
