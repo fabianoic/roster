@@ -83,7 +83,6 @@ public class ShiftService {
             throw new ConflictShiftException("There are conflicts shift time");
         }
 
-
         Employee employee = employeeService.retrieveEmployeeById(employeeId);
 
         shift.setEmployee(employee);

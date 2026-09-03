@@ -50,11 +50,13 @@ CREATE INDEX idx_shift_store_date ON shift(store_id, shift_date);
 
 -- Disponibilidade recorrente do funcionario
 CREATE TABLE availability (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    employee_id UUID NOT NULL REFERENCES employee(id),
-    weekday     SMALLINT NOT NULL CHECK (weekday BETWEEN 0 AND 6), -- 0=domingo
-    start_time  TIME NOT NULL,
-    end_time    TIME NOT NULL,
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    employee_id     UUID NOT NULL REFERENCES employee(id),
+    weekday         SMALLINT NOT NULL CHECK (weekday BETWEEN 0 AND 6), -- 0=domingo
+    is_available    BOOLEAN NOT NULL DEFAULT FALSE,
+    note            VARCHAR(255),
+    start_time      TIME NOT NULL,
+    end_time        TIME NOT NULL,
     CHECK (end_time > start_time)
 );
 
@@ -67,6 +69,7 @@ CREATE TABLE time_off_request (
     start_date  DATE NOT NULL,
     end_date    DATE NOT NULL,
     reason      VARCHAR(255),
+    type        VARCHAR(50) NOT NULL CHECK (type IN ('HOLIDAY', 'PERSONAL', 'SICK'))
     status      VARCHAR(20) NOT NULL DEFAULT 'PENDING'
                 CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED')),
     created_at  TIMESTAMP NOT NULL DEFAULT now(),
