@@ -23,20 +23,4 @@ spring:
     enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: true
-
-  security:
-    user:
-      name: admin
-      password: admin
-
-springdoc:
-  swagger-ui:
-    path: /swagger-ui.html
-  api-docs:
-    path: /v3/api-docs
-
-logging:
-  level:
-    com.ficsolution.roster: INFO
-    org.hibernate.SQL: WARN
-
+    clean-on-validation-error: true
