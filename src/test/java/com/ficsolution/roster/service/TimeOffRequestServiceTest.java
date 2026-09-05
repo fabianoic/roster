@@ -3,7 +3,7 @@ package com.ficsolution.roster.service;
 import com.ficsolution.roster.exception.ObjectNotFoundException;
 import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.model.TimeOffRequest;
-import com.ficsolution.roster.model.enumModel.TimeOffRequestStatus;
+import com.ficsolution.roster.model.enumModel.RequestStatus;
 import com.ficsolution.roster.model.enumModel.TimeOffRequestType;
 import com.ficsolution.roster.repository.TimeOffRequestRepository;
 import org.junit.jupiter.api.BeforeAll;
@@ -50,7 +50,7 @@ public class TimeOffRequestServiceTest {
                 LocalDate.now(),
                 "I'll move",
                 TimeOffRequestType.PERSONAL,
-                TimeOffRequestStatus.PENDING,
+                RequestStatus.PENDING,
                 LocalDateTime.now(),
                 LocalDateTime.now()
         );
@@ -65,7 +65,7 @@ public class TimeOffRequestServiceTest {
 
         assertNotNull(savedTimeOffRequest);
         assertEquals(TimeOffRequestType.PERSONAL, savedTimeOffRequest.getType());
-        assertEquals(TimeOffRequestStatus.PENDING, savedTimeOffRequest.getStatus());
+        assertEquals(RequestStatus.PENDING, savedTimeOffRequest.getStatus());
         verify(timeOffRequestRepository, times(1)).save(timeOffRequest);
     }
 
@@ -80,7 +80,7 @@ public class TimeOffRequestServiceTest {
                         LocalDate.now(),
                         "I'll move again",
                         TimeOffRequestType.PERSONAL,
-                        TimeOffRequestStatus.PENDING,
+                        RequestStatus.PENDING,
                         LocalDateTime.now().plusDays(1),
                         LocalDateTime.now().plusDays(1)
                 )
@@ -102,7 +102,7 @@ public class TimeOffRequestServiceTest {
 
         assertNotNull(retrievedTimeOffRequest);
         assertEquals(TimeOffRequestType.PERSONAL, retrievedTimeOffRequest.getType());
-        assertEquals(TimeOffRequestStatus.PENDING, retrievedTimeOffRequest.getStatus());
+        assertEquals(RequestStatus.PENDING, retrievedTimeOffRequest.getStatus());
         verify(timeOffRequestRepository, times(1)).findById(timeOffRequestId);
     }
 
@@ -134,7 +134,7 @@ public class TimeOffRequestServiceTest {
                 timeOffRequest.getEndDate(),
                 "new reason",
                 TimeOffRequestType.PERSONAL,
-                TimeOffRequestStatus.PENDING,
+                RequestStatus.PENDING,
                 timeOffRequest.getCreatedAt(),
                 LocalDateTime.now().plusDays(1)
         );

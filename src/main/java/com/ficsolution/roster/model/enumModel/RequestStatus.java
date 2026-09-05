@@ -1,5 +1,5 @@
 package com.ficsolution.roster.model.enumModel;
 
-public enum TimeOffRequestStatus {
+public enum RequestStatus {
     PENDING, APPROVED, REJECTED
 }

@@ -2,7 +2,7 @@ package com.ficsolution.roster.repository;
 
 import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.model.TimeOffRequest;
-import com.ficsolution.roster.model.enumModel.TimeOffRequestStatus;
+import com.ficsolution.roster.model.enumModel.RequestStatus;
 import com.ficsolution.roster.model.enumModel.TimeOffRequestType;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,7 +42,7 @@ public class TimeOffRequestRepositoryTest {
                 LocalDate.now(),
                 "I'll move",
                 TimeOffRequestType.PERSONAL,
-                TimeOffRequestStatus.PENDING,
+                RequestStatus.PENDING,
                 LocalDateTime.now(),
                 LocalDateTime.now()
         );
@@ -50,7 +50,7 @@ public class TimeOffRequestRepositoryTest {
         TimeOffRequest savedTimeOffRequest = timeOffRequestRepository.save(timeOffRequest);
 
         assertNotNull(savedTimeOffRequest);
-        assertEquals(TimeOffRequestStatus.PENDING, savedTimeOffRequest.getStatus());
+        assertEquals(RequestStatus.PENDING, savedTimeOffRequest.getStatus());
         assertEquals(TimeOffRequestType.PERSONAL, savedTimeOffRequest.getType());
     }
 
@@ -60,7 +60,7 @@ public class TimeOffRequestRepositoryTest {
 
         assertFalse(retrievedTimeOffRequest.isEmpty());
         assertEquals(timeOffRequestId, retrievedTimeOffRequest.get().getId());
-        assertEquals(TimeOffRequestStatus.APPROVED, retrievedTimeOffRequest.get().getStatus());
+        assertEquals(RequestStatus.APPROVED, retrievedTimeOffRequest.get().getStatus());
     }
 
     @Test
@@ -77,7 +77,7 @@ public class TimeOffRequestRepositoryTest {
 
         assertNotNull(timeOffRequests);
         assertEquals(1, timeOffRequests.size());
-        assertEquals(TimeOffRequestStatus.PENDING, timeOffRequests.getFirst().getStatus());
+        assertEquals(RequestStatus.PENDING, timeOffRequests.getFirst().getStatus());
     }
 
     @Test
@@ -91,7 +91,7 @@ public class TimeOffRequestRepositoryTest {
                 timeOffRequest.getEndDate(),
                 timeOffRequest.getReason(),
                 timeOffRequest.getType(),
-                TimeOffRequestStatus.REJECTED,
+                RequestStatus.REJECTED,
                 timeOffRequest.getCreatedAt(),
                 LocalDateTime.now()
         );
@@ -99,7 +99,7 @@ public class TimeOffRequestRepositoryTest {
         TimeOffRequest updatedTimeOffRequest = timeOffRequestRepository.save(newTimeOffRequest);
 
         assertNotNull(updatedTimeOffRequest);
-        assertEquals(TimeOffRequestStatus.REJECTED, updatedTimeOffRequest.getStatus());
+        assertEquals(RequestStatus.REJECTED, updatedTimeOffRequest.getStatus());
         assertNotEquals(updatedTimeOffRequest.getCreatedAt(), updatedTimeOffRequest.getUpdatedAt());
     }
 
