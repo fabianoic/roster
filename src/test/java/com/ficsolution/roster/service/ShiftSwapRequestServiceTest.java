@@ -135,7 +135,31 @@ public class ShiftSwapRequestServiceTest {
     }
 
     @Test
-    void testShiftSwapRequestChangeStatus() {
+    void testShiftSwapRequestChangeStatus_pendingValidation() {
+        Shift shift = new Shift();
+        shift.setId(shiftId);
+        Employee requester = new Employee();
+        requester.setId(employee1Id);
+        shift.setEmployee(requester);
+        Employee target = new Employee();
+        target.setId(employeeId);
+        ShiftSwapRequest shiftSwapRequest = new ShiftSwapRequest();
+        shiftSwapRequest.setShift(shift);
+        shiftSwapRequest.setRequester(requester);
+        shiftSwapRequest.setTarget(target);
+        shiftSwapRequest.setStatus(RequestStatus.APPROVED);
+        LocalDateTime updatedAt = LocalDateTime.now();
+        shiftSwapRequest.setUpdatedAt(updatedAt);
+        when(shiftSwapRequestRepository.findById(shiftSwapRequestId)).thenReturn(Optional.of(shiftSwapRequest));
+
+        assertThrows(ActionNotAllowedException.class, () -> shiftSwapRequestService.changeStatus(shiftSwapRequestId, employeeId, RequestStatus.REJECTED));
+        verify(shiftSwapRequestRepository, times(1)).findById(shiftSwapRequestId);
+        verify(shiftService, times(0)).swapShiftEmployee(shiftId, employeeId);
+        verify(shiftSwapRequestRepository, times(0)).save(shiftSwapRequest);
+    }
+
+    @Test
+    void testShiftSwapRequestChangeToApproveStatus() {
         Shift shift = new Shift();
         shift.setId(shiftId);
         Employee requester = new Employee();
@@ -161,6 +185,34 @@ public class ShiftSwapRequestServiceTest {
         assertEquals(updatedAt, updatedShiftSwapRequest.getUpdatedAt());
         verify(shiftSwapRequestRepository, times(1)).findById(shiftSwapRequestId);
         verify(shiftService, times(1)).swapShiftEmployee(shiftId, employeeId);
+    }
+
+    @Test
+    void testShiftSwapRequestChangeToRejectStatus() {
+        Shift shift = new Shift();
+        shift.setId(shiftId);
+        Employee requester = new Employee();
+        requester.setId(employee1Id);
+        shift.setEmployee(requester);
+        Employee target = new Employee();
+        target.setId(employeeId);
+        ShiftSwapRequest shiftSwapRequest = new ShiftSwapRequest();
+        shiftSwapRequest.setShift(shift);
+        shiftSwapRequest.setRequester(requester);
+        shiftSwapRequest.setTarget(target);
+        shiftSwapRequest.setStatus(RequestStatus.PENDING);
+        LocalDateTime updatedAt = LocalDateTime.now();
+        shiftSwapRequest.setUpdatedAt(updatedAt);
+        when(shiftSwapRequestRepository.findById(shiftSwapRequestId)).thenReturn(Optional.of(shiftSwapRequest));
+        when(shiftSwapRequestRepository.save(any(ShiftSwapRequest.class))).thenReturn(shiftSwapRequest);
+
+        ShiftSwapRequest updatedShiftSwapRequest = shiftSwapRequestService.changeStatus(shiftSwapRequestId, employeeId, RequestStatus.REJECTED);
+
+        assertNotNull(updatedShiftSwapRequest);
+        assertEquals(RequestStatus.REJECTED, updatedShiftSwapRequest.getStatus());
+        assertEquals(updatedAt, updatedShiftSwapRequest.getUpdatedAt());
+        verify(shiftSwapRequestRepository, times(1)).findById(shiftSwapRequestId);
+        verify(shiftService, times(0)).swapShiftEmployee(shiftId, employeeId);
     }
 
     @Test

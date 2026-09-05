@@ -2,7 +2,7 @@ package com.ficsolution.roster.service;
 
 import com.ficsolution.roster.exception.ActionNotAllowedException;
 import com.ficsolution.roster.exception.ConflictShiftException;
-import com.ficsolution.roster.exception.EmployeeHasNotPermissionException;
+import com.ficsolution.roster.exception.ActionNotAllowedException;
 import com.ficsolution.roster.exception.ObjectNotFoundException;
 import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.model.Shift;
@@ -59,11 +59,14 @@ public class ShiftSwapRequestService {
     public ShiftSwapRequest changeStatus(UUID shiftSwapRequestId, UUID employeeId, RequestStatus status) {
         ShiftSwapRequest shiftSwapRequest = retrieveShiftSwapRequestById(shiftSwapRequestId);
 
-        if (!shiftSwapRequest.getTarget().getId().equals(employeeId)) {
-            throw new EmployeeHasNotPermissionException("Change status failed, requester hasn't permission!");
+        if (!shiftSwapRequest.getTarget().getId().equals(employeeId) ||
+            !shiftSwapRequest.getStatus().equals(RequestStatus.PENDING)) {
+            throw new ActionNotAllowedException("Change status failed, action not allowed!");
         }
 
-        shiftService.swapShiftEmployee(shiftSwapRequest.getShift().getId(), employeeId);
+        if (status.equals(RequestStatus.APPROVED)) {
+            shiftService.swapShiftEmployee(shiftSwapRequest.getShift().getId(), employeeId);
+        }
 
         shiftSwapRequest.setStatus(status);
 
