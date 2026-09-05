@@ -19,10 +19,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -104,6 +101,28 @@ public class ShiftServiceTest {
         verify(employeeService, times(0)).retrieveEmployeeById(employee.getId());
         verify(storeService, times(0)).retrieveStoreById(store.getId());
         verify(shiftRepository, times(0)).save(wrongShift);
+    }
+
+    @Test
+    void testCreateShift_conflictShift() {
+        Shift existingShift = new Shift(
+                id,
+                employee,
+                store,
+                LocalDate.now(),
+                LocalTime.of(8, 0),
+                LocalTime.of(16, 0),
+                ShiftStatus.SCHEDULED,
+                LocalDateTime.now(),
+                LocalDateTime.now());
+        List<Shift> shifts = List.of(existingShift);
+        when(shiftRepository.findByEmployeeIdAndShiftDate(employee.getId(), LocalDate.now())).thenReturn(shifts);
+
+        assertThrows(ConflictShiftException.class, () -> shiftService.createShift(shift));
+        verify(employeeService, times(0)).retrieveEmployeeById(employee.getId());
+        verify(storeService, times(0)).retrieveStoreById(store.getId());
+        verify(shiftRepository, times(0)).save(existingShift);
+        verify(shiftRepository, times(1)).findByEmployeeIdAndShiftDate(employee.getId(), LocalDate.now());
     }
 
     @Test

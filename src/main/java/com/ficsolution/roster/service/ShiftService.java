@@ -29,6 +29,8 @@ public class ShiftService {
 
     public Shift createShift(Shift shift) {
         validShiftTime(shift);
+        validConflictShiftDateAndTime(shift.getEmployee().getId(), shift);
+
         Employee employee = employeeService.retrieveEmployeeById(shift.getEmployee().getId());
         Store store = storeService.retrieveStoreById(shift.getStore().getId());
 
@@ -77,17 +79,21 @@ public class ShiftService {
 
     public Shift swapShiftEmployee(UUID shiftId, UUID employeeId) {
         Shift shift = retrieveShiftById(shiftId);
-        List<Shift> shifts = shiftRepository.findByEmployeeIdAndShiftDate(employeeId, shift.getShiftDate());
-
-        if (shifts.stream().anyMatch(existingShift -> isOverlapping(existingShift, shift))) {
-            throw new ConflictShiftException("There are conflicts shift time");
-        }
+        validConflictShiftDateAndTime(employeeId, shift);
 
         Employee employee = employeeService.retrieveEmployeeById(employeeId);
 
         shift.setEmployee(employee);
 
         return shiftRepository.save(shift);
+    }
+
+    private void validConflictShiftDateAndTime(UUID employeeId, Shift shift) {
+        List<Shift> shifts = shiftRepository.findByEmployeeIdAndShiftDate(employeeId, shift.getShiftDate());
+
+        if (shifts.stream().anyMatch(existingShift -> isOverlapping(existingShift, shift))) {
+            throw new ConflictShiftException("There are conflicts shift time");
+        }
     }
 
     private boolean isOverlapping(Shift existingShift, Shift newShift) {
