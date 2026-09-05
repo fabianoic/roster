@@ -1,5 +1,6 @@
 package com.ficsolution.roster.service;
 
+import com.ficsolution.roster.exception.EmailAlreadyExistsException;
 import com.ficsolution.roster.exception.ObjectNotFoundException;
 import com.ficsolution.roster.exception.PasswordNotEqualException;
 import com.ficsolution.roster.model.Employee;
@@ -7,6 +8,7 @@ import com.ficsolution.roster.model.Role;
 import com.ficsolution.roster.model.enumModel.EmployeeStatus;
 import com.ficsolution.roster.repository.EmployeeRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -22,8 +24,30 @@ public class EmployeeService {
     @Autowired
     private RoleService roleService;
 
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     public Employee createEmployee(Employee employee) {
+        String normalizedEmail = employee.getEmail().trim().toLowerCase();
+
+        if (employeeRepository.existsByEmail(normalizedEmail)) {
+            throw new EmailAlreadyExistsException("This e-mail already exists.");
+        }
+
+        Role role = roleService.retrieveById(employee.getRole().getId());
+
+        String hashedPassword = passwordEncoder.encode(employee.getPassword());
+
+        employee.setRole(role);
+        employee.setPassword(hashedPassword);
+        employee.setStatus(EmployeeStatus.ACTIVE);
+        employee.setCreatedAt(LocalDateTime.now());
+        employee.setUpdatedAt(LocalDateTime.now());
+        employee.setEmail(normalizedEmail);
+
+
         return employeeRepository.save(employee);
+
     }
 
     public List<Employee> retrieveAllEmployees() {

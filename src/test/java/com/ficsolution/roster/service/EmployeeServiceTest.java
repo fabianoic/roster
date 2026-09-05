@@ -1,5 +1,6 @@
 package com.ficsolution.roster.service;
 
+import com.ficsolution.roster.exception.EmailAlreadyExistsException;
 import com.ficsolution.roster.exception.ObjectNotFoundException;
 import com.ficsolution.roster.exception.PasswordNotEqualException;
 import com.ficsolution.roster.model.Employee;
@@ -11,6 +12,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -34,25 +36,72 @@ public class EmployeeServiceTest {
     @Mock
     private RoleService roleService;
 
+    @Mock
+    private PasswordEncoder passwordEncoder;
+
     private UUID id = UUID.randomUUID();
 
     @Test
     void testCreateEmployee() {
+        String email = "fabiano.fic@gmail.com";
+        Role role = new Role(UUID.fromString("df501f58-dc8a-470c-a26d-5786633b6009"), "STAFF");
         Employee employee = new Employee(id, "Fabiano Campos",
-                "fabiano.fic@gmail.com",
+                email,
                 "RANDOMHASHPASSWORD",
-                new Role(UUID.fromString("df501f58-dc8a-470c-a26d-5786633b6009"), "STAFF"),
+                role,
                 EmployeeStatus.ACTIVE,
                 LocalDateTime.now(),
                 LocalDateTime.now());
-        employeeRepository.save(employee);
         when(employeeRepository.save(any(Employee.class))).thenReturn(employee);
-
+        when(employeeRepository.existsByEmail(email)).thenReturn(false);
+        when(passwordEncoder.encode(any())).thenReturn("ENCODEDPASSWORD");
+        when(roleService.retrieveById(role.getId())).thenReturn(role);
         Employee createdEmployee = employeeService.createEmployee(employee);
 
         assertNotNull(createdEmployee);
         assertEquals("Fabiano Campos", createdEmployee.getName());
         assertEquals("fabiano.fic@gmail.com", createdEmployee.getEmail());
+        verify(employeeRepository, times(1)).existsByEmail(email);
+        verify(employeeRepository, times(1)).save(employee);
+        verify(roleService, times(1)).retrieveById(employee.getRole().getId());
+    }
+
+    @Test
+    void testCreateEmployee_emailExistException() {
+        String email = "fabiano.fic@gmail.com";
+        Employee employee = new Employee(id, "Fabiano Campos",
+                email,
+                "RANDOMHASHPASSWORD",
+                new Role(UUID.fromString("df501f58-dc8a-470c-a26d-5786633b6009"), "STAFF"),
+                EmployeeStatus.ACTIVE,
+                LocalDateTime.now(),
+                LocalDateTime.now());
+        when(employeeRepository.existsByEmail(email)).thenReturn(true);
+
+        assertThrows(EmailAlreadyExistsException.class, () -> employeeService.createEmployee(employee));
+        verify(employeeRepository, times(1)).existsByEmail(email);
+        verify(employeeRepository, times(0)).save(employee);
+        verify(roleService, times(0)).retrieveById(employee.getRole().getId());
+    }
+
+    @Test
+    void testCreateEmployee_roleException() {
+        String email = "fabiano.fic@gmail.com";
+        Role role = new Role(UUID.fromString("df501f58-dc8a-470c-a26d-5786633b6009"), "STAFF");
+        Employee employee = new Employee(id, "Fabiano Campos",
+                email,
+                "RANDOMHASHPASSWORD",
+                role,
+                EmployeeStatus.ACTIVE,
+                LocalDateTime.now(),
+                LocalDateTime.now());
+        when(employeeRepository.existsByEmail(email)).thenReturn(false);
+        doThrow(ObjectNotFoundException.class).when(roleService).retrieveById(role.getId());
+
+        assertThrows(ObjectNotFoundException.class, () -> employeeService.createEmployee(employee));
+        verify(employeeRepository, times(1)).existsByEmail(email);
+        verify(roleService, times(1)).retrieveById(role.getId());
+        verify(employeeRepository, times(0)).save(employee);
     }
 
     @Test
