@@ -1,6 +1,6 @@
 package com.ficsolution.roster.service;
 
-import com.ficsolution.roster.exception.TimeOffRequestNotFoundException;
+import com.ficsolution.roster.exception.ObjectNotFoundException;
 import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.model.TimeOffRequest;
 import com.ficsolution.roster.repository.TimeOffRequestRepository;
@@ -33,7 +33,7 @@ public class TimeOffRequestService {
     }
 
     public TimeOffRequest retrieveTimeOffRequestById(UUID timeOffRequestId) {
-        return timeOffRequestRepository.findById(timeOffRequestId).orElseThrow(() -> new TimeOffRequestNotFoundException("Time off request not found, id: " + timeOffRequestId));
+        return timeOffRequestRepository.findById(timeOffRequestId).orElseThrow(() -> new ObjectNotFoundException("Time off request not found, id: " + timeOffRequestId));
     }
 
     public List<TimeOffRequest> retrieveAllTimeOffRequestsByEmployeeId(UUID employeeId) {

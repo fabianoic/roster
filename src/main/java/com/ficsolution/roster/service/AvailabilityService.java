@@ -1,6 +1,6 @@
 package com.ficsolution.roster.service;
 
-import com.ficsolution.roster.exception.AvailabilityNotFoundException;
+import com.ficsolution.roster.exception.ObjectNotFoundException;
 import com.ficsolution.roster.model.Availability;
 import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.repository.AvailabilityRepository;
@@ -31,7 +31,7 @@ public class AvailabilityService {
     }
 
     public Availability retrieveAvailabilityById(UUID availabilityId) {
-        return availabilityRepository.findById(availabilityId).orElseThrow(() -> new AvailabilityNotFoundException("Availability not found, id: " + availabilityId));
+        return availabilityRepository.findById(availabilityId).orElseThrow(() -> new ObjectNotFoundException("Availability not found, id: " + availabilityId));
     }
 
     public List<Availability> retrieveAllAvailabilityByEmployeeId(UUID employeeId) {

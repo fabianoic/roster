@@ -2,7 +2,7 @@ package com.ficsolution.roster.service;
 
 import com.ficsolution.roster.exception.ConflictShiftException;
 import com.ficsolution.roster.exception.InvalidDateTimeException;
-import com.ficsolution.roster.exception.ShiftNotFoundException;
+import com.ficsolution.roster.exception.ObjectNotFoundException;
 import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.model.Shift;
 import com.ficsolution.roster.model.Store;
@@ -57,7 +57,7 @@ public class ShiftService {
     }
 
     public Shift retrieveShiftById(UUID id) {
-        return shiftRepository.findById(id).orElseThrow(() -> new ShiftNotFoundException("Shift not found, id: " + id));
+        return shiftRepository.findById(id).orElseThrow(() -> new ObjectNotFoundException("Shift not found, id: " + id));
     }
 
     public Shift updateShiftInfo(UUID id, Shift newShift) {

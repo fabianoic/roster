@@ -1,6 +1,6 @@
 package com.ficsolution.roster.service;
 
-import com.ficsolution.roster.exception.RoleNotFoundException;
+import com.ficsolution.roster.exception.ObjectNotFoundException;
 import com.ficsolution.roster.model.Role;
 import com.ficsolution.roster.repository.RoleRepository;
 import org.junit.jupiter.api.Test;
@@ -67,7 +67,7 @@ public class RoleServiceTest {
         // arrange
         when(roleRepository.findById(id)).thenReturn(Optional.empty());
         // act & assert
-        assertThrows(RoleNotFoundException.class, () -> roleService.retrieveById(id));
+        assertThrows(ObjectNotFoundException.class, () -> roleService.retrieveById(id));
         verify(roleRepository, times(1)).findById(id);
     }
 

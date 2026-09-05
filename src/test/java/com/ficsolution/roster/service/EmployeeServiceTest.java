@@ -1,6 +1,6 @@
 package com.ficsolution.roster.service;
 
-import com.ficsolution.roster.exception.EmployeeNotFoundException;
+import com.ficsolution.roster.exception.ObjectNotFoundException;
 import com.ficsolution.roster.exception.PasswordNotEqualException;
 import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.model.Role;
@@ -105,7 +105,7 @@ public class EmployeeServiceTest {
     void testRetrieveEmployeeById_NotFound() {
         when(employeeRepository.findById(id)).thenReturn(Optional.empty());
 
-        assertThrows(EmployeeNotFoundException.class, () -> employeeService.retrieveEmployeeById(id));
+        assertThrows(ObjectNotFoundException.class, () -> employeeService.retrieveEmployeeById(id));
         verify(employeeRepository, times(1)).findById(id);
     }
 

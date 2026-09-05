@@ -1,6 +1,6 @@
 package com.ficsolution.roster.service;
 
-import com.ficsolution.roster.exception.EmployeeNotFoundException;
+import com.ficsolution.roster.exception.ObjectNotFoundException;
 import com.ficsolution.roster.exception.PasswordNotEqualException;
 import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.model.Role;
@@ -31,7 +31,7 @@ public class EmployeeService {
     }
 
     public Employee retrieveEmployeeById(UUID id) {
-        return employeeRepository.findById(id).orElseThrow(() -> new EmployeeNotFoundException("Employee not found, id: " + id));
+        return employeeRepository.findById(id).orElseThrow(() -> new ObjectNotFoundException("Employee not found, id: " + id));
     }
 
     public Employee updateEmployeeInfo(UUID id, Employee newEmployeeInfo) {

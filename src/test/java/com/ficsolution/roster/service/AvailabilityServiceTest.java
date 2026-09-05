@@ -1,6 +1,6 @@
 package com.ficsolution.roster.service;
 
-import com.ficsolution.roster.exception.AvailabilityNotFoundException;
+import com.ficsolution.roster.exception.ObjectNotFoundException;
 import com.ficsolution.roster.model.Availability;
 import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.repository.AvailabilityRepository;
@@ -109,7 +109,7 @@ public class AvailabilityServiceTest {
     void testRetrieveAvailabilityById_notFound() {
         when(availabilityRepository.findById(availabilityId)).thenReturn(Optional.empty());
 
-        assertThrows(AvailabilityNotFoundException.class, () -> availabilityService.retrieveAvailabilityById(availabilityId));
+        assertThrows(ObjectNotFoundException.class, () -> availabilityService.retrieveAvailabilityById(availabilityId));
         verify(availabilityRepository, times(1)).findById(availabilityId);
     }
 

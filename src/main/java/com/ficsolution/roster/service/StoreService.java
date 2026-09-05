@@ -1,6 +1,6 @@
 package com.ficsolution.roster.service;
 
-import com.ficsolution.roster.exception.StoreNotFoundException;
+import com.ficsolution.roster.exception.ObjectNotFoundException;
 import com.ficsolution.roster.model.Store;
 import com.ficsolution.roster.repository.StoreRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,7 +25,7 @@ public class StoreService {
     }
 
     public Store retrieveStoreById(UUID id) {
-        return storeRepository.findById(id).orElseThrow(() -> new StoreNotFoundException("Store not found, id: " + id));
+        return storeRepository.findById(id).orElseThrow(() -> new ObjectNotFoundException("Store not found, id: " + id));
     }
 
     public Store updateStore(UUID id, Store editStore) {

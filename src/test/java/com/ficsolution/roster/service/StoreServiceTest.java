@@ -1,6 +1,6 @@
 package com.ficsolution.roster.service;
 
-import com.ficsolution.roster.exception.StoreNotFoundException;
+import com.ficsolution.roster.exception.ObjectNotFoundException;
 import com.ficsolution.roster.model.Store;
 import com.ficsolution.roster.repository.StoreRepository;
 import org.junit.jupiter.api.Test;
@@ -83,7 +83,7 @@ public class StoreServiceTest {
         when(storeRepository.findById(id)).thenReturn(Optional.empty());
 
         // act & assert
-        assertThrows(StoreNotFoundException.class, () -> storeService.retrieveStoreById(id));
+        assertThrows(ObjectNotFoundException.class, () -> storeService.retrieveStoreById(id));
         verify(storeRepository, times(1)).findById(id);
     }
 

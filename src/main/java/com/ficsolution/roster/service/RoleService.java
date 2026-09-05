@@ -1,6 +1,6 @@
 package com.ficsolution.roster.service;
 
-import com.ficsolution.roster.exception.RoleNotFoundException;
+import com.ficsolution.roster.exception.ObjectNotFoundException;
 import com.ficsolution.roster.model.Role;
 import com.ficsolution.roster.repository.RoleRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,7 +24,7 @@ public class RoleService {
     }
 
     public Role retrieveById(UUID id) {
-        return roleRepository.findById(id).orElseThrow(() -> new RoleNotFoundException("Role not found, id: " + id));
+        return roleRepository.findById(id).orElseThrow(() -> new ObjectNotFoundException("Role not found, id: " + id));
     }
 
     public Role updateRoleName(UUID id, String newRoleName) {

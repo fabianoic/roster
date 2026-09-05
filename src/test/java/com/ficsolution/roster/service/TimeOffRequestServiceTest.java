@@ -1,6 +1,6 @@
 package com.ficsolution.roster.service;
 
-import com.ficsolution.roster.exception.TimeOffRequestNotFoundException;
+import com.ficsolution.roster.exception.ObjectNotFoundException;
 import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.model.TimeOffRequest;
 import com.ficsolution.roster.model.enumModel.TimeOffRequestStatus;
@@ -110,7 +110,7 @@ public class TimeOffRequestServiceTest {
     void testRetrieveTimeOffRequestById_notFound() {
         when(timeOffRequestRepository.findById(timeOffRequestId)).thenReturn(Optional.empty());
 
-        assertThrows(TimeOffRequestNotFoundException.class, () -> timeOffRequestService.retrieveTimeOffRequestById(timeOffRequestId));
+        assertThrows(ObjectNotFoundException.class, () -> timeOffRequestService.retrieveTimeOffRequestById(timeOffRequestId));
     }
 
     @Test

@@ -1,6 +1,6 @@
 package com.ficsolution.roster.model;
 
-import com.ficsolution.roster.model.enumModel.TimeOffRequestStatus;
+import com.ficsolution.roster.model.enumModel.RequestStatus;
 import com.ficsolution.roster.model.enumModel.TimeOffRequestType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -32,7 +32,7 @@ public class TimeOffRequest {
     @Enumerated(EnumType.STRING)
     private TimeOffRequestType type;
     @Enumerated(EnumType.STRING)
-    private TimeOffRequestStatus status;
+    private RequestStatus status;
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
