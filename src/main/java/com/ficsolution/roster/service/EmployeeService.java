@@ -1,8 +1,7 @@
 package com.ficsolution.roster.service;
 
-import com.ficsolution.roster.exception.EmailAlreadyExistsException;
+import com.ficsolution.roster.exception.ObjectConflictException;
 import com.ficsolution.roster.exception.ObjectNotFoundException;
-import com.ficsolution.roster.exception.PasswordNotEqualException;
 import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.model.Role;
 import com.ficsolution.roster.model.enumModel.EmployeeStatus;
@@ -31,7 +30,7 @@ public class EmployeeService {
         String normalizedEmail = employee.getEmail().trim().toLowerCase();
 
         if (employeeRepository.existsByEmail(normalizedEmail)) {
-            throw new EmailAlreadyExistsException("This e-mail already exists.");
+            throw new ObjectConflictException("E-mail", "This e-mail already exists.");
         }
 
         Role role = roleService.retrieveById(employee.getRole().getId());
@@ -55,7 +54,7 @@ public class EmployeeService {
     }
 
     public Employee retrieveEmployeeById(UUID id) {
-        return employeeRepository.findById(id).orElseThrow(() -> new ObjectNotFoundException("Employee not found, id: " + id));
+        return employeeRepository.findById(id).orElseThrow(() -> new ObjectNotFoundException("Employee", id));
     }
 
     public Employee updateEmployeeInfo(UUID id, Employee newEmployeeInfo) {
@@ -88,7 +87,7 @@ public class EmployeeService {
             employee.setPassword(newPassword);
             return employeeRepository.save(employee);
         }
-        throw new PasswordNotEqualException("The old password is not correct!");
+        throw new ObjectConflictException("E-mail", "The old password is not correct!");
     }
 
     private boolean isValidPassword(String newPassword) {

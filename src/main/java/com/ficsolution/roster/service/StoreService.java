@@ -25,7 +25,7 @@ public class StoreService {
     }
 
     public Store retrieveStoreById(UUID id) {
-        return storeRepository.findById(id).orElseThrow(() -> new ObjectNotFoundException("Store not found, id: " + id));
+        return storeRepository.findById(id).orElseThrow(() -> new ObjectNotFoundException("Store", id));
     }
 
     public Store updateStore(UUID id, Store editStore) {

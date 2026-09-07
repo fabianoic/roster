@@ -1,7 +1,6 @@
 package com.ficsolution.roster.service;
 
-import com.ficsolution.roster.exception.ActionNotAllowedException;
-import com.ficsolution.roster.exception.ConflictShiftException;
+import com.ficsolution.roster.exception.ObjectConflictException;
 import com.ficsolution.roster.exception.ObjectNotFoundException;
 import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.model.Shift;
@@ -69,7 +68,7 @@ public class ShiftSwapRequestServiceTest {
     }
 
     @Test
-    void testCreateShiftSwapRequest_conflictShiftException() {
+    void testCreateShiftSwapRequest_ObjectConflictException() {
         Employee requester = new Employee();
         requester.setId(employeeId);
         Shift shift = new Shift();
@@ -83,7 +82,7 @@ public class ShiftSwapRequestServiceTest {
 
         when(shiftService.retrieveShiftById(any())).thenReturn(shift);
 
-        assertThrows(ConflictShiftException.class, () -> shiftSwapRequestService.createShiftSwapRequest(shiftSwapRequest));
+        assertThrows(ObjectConflictException.class, () -> shiftSwapRequestService.createShiftSwapRequest(shiftSwapRequest));
     }
 
     @Test
@@ -152,7 +151,7 @@ public class ShiftSwapRequestServiceTest {
         shiftSwapRequest.setUpdatedAt(updatedAt);
         when(shiftSwapRequestRepository.findById(shiftSwapRequestId)).thenReturn(Optional.of(shiftSwapRequest));
 
-        assertThrows(ActionNotAllowedException.class, () -> shiftSwapRequestService.changeStatus(shiftSwapRequestId, employeeId, RequestStatus.REJECTED));
+        assertThrows(ObjectConflictException.class, () -> shiftSwapRequestService.changeStatus(shiftSwapRequestId, employeeId, RequestStatus.REJECTED));
         verify(shiftSwapRequestRepository, times(1)).findById(shiftSwapRequestId);
         verify(shiftService, times(0)).swapShiftEmployee(shiftId, employeeId);
         verify(shiftSwapRequestRepository, times(0)).save(shiftSwapRequest);
@@ -237,7 +236,7 @@ public class ShiftSwapRequestServiceTest {
 
         when(shiftSwapRequestRepository.findById(shiftSwapRequestId)).thenReturn(Optional.of(shiftSwapRequest));
 
-        assertThrows(ActionNotAllowedException.class, () -> shiftSwapRequestService.deleteShiftSwapRequest(shiftSwapRequestId));
+        assertThrows(ObjectConflictException.class, () -> shiftSwapRequestService.deleteShiftSwapRequest(shiftSwapRequestId));
 
         verify(shiftSwapRequestRepository, times(1)).findById(shiftSwapRequestId);
         verify(shiftSwapRequestRepository, times(0)).delete(shiftSwapRequest);

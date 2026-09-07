@@ -1,7 +1,6 @@
 package com.ficsolution.roster.service;
 
-import com.ficsolution.roster.exception.ConflictShiftException;
-import com.ficsolution.roster.exception.InvalidDateTimeException;
+import com.ficsolution.roster.exception.ObjectConflictException;
 import com.ficsolution.roster.exception.ObjectNotFoundException;
 import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.model.Shift;
@@ -42,7 +41,7 @@ public class ShiftService {
 
     private static void validShiftTime(Shift shift) {
         if (shift.getStartTime().isAfter(shift.getEndTime()) || shift.getStartTime().equals(shift.getEndTime())) {
-            throw new InvalidDateTimeException("Start and End of shift time need to be a valid time.");
+            throw new ObjectConflictException("ShiftTime", "Start and End of shift time need to be a valid time.");
         }
     }
 
@@ -59,7 +58,7 @@ public class ShiftService {
     }
 
     public Shift retrieveShiftById(UUID id) {
-        return shiftRepository.findById(id).orElseThrow(() -> new ObjectNotFoundException("Shift not found, id: " + id));
+        return shiftRepository.findById(id).orElseThrow(() -> new ObjectNotFoundException("Shift", id));
     }
 
     public Shift updateShiftInfo(UUID id, Shift newShift) {
@@ -92,7 +91,7 @@ public class ShiftService {
         List<Shift> shifts = shiftRepository.findByEmployeeIdAndShiftDate(employeeId, shift.getShiftDate());
 
         if (shifts.stream().anyMatch(existingShift -> isOverlapping(existingShift, shift))) {
-            throw new ConflictShiftException("There are conflicts shift time");
+            throw new ObjectConflictException("ShiftTime", "There are conflicts shift time");
         }
     }
 

@@ -1,7 +1,6 @@
 package com.ficsolution.roster.service;
 
-import com.ficsolution.roster.exception.ConflictShiftException;
-import com.ficsolution.roster.exception.InvalidDateTimeException;
+import com.ficsolution.roster.exception.ObjectConflictException;
 import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.model.Role;
 import com.ficsolution.roster.model.Shift;
@@ -97,7 +96,7 @@ public class ShiftServiceTest {
                 LocalDateTime.now(),
                 LocalDateTime.now());
 
-        assertThrows(InvalidDateTimeException.class, () -> shiftService.createShift(wrongShift));
+        assertThrows(ObjectConflictException.class, () -> shiftService.createShift(wrongShift));
         verify(employeeService, times(0)).retrieveEmployeeById(employee.getId());
         verify(storeService, times(0)).retrieveStoreById(store.getId());
         verify(shiftRepository, times(0)).save(wrongShift);
@@ -118,7 +117,7 @@ public class ShiftServiceTest {
         List<Shift> shifts = List.of(existingShift);
         when(shiftRepository.findByEmployeeIdAndShiftDate(employee.getId(), LocalDate.now())).thenReturn(shifts);
 
-        assertThrows(ConflictShiftException.class, () -> shiftService.createShift(shift));
+        assertThrows(ObjectConflictException.class, () -> shiftService.createShift(shift));
         verify(employeeService, times(0)).retrieveEmployeeById(employee.getId());
         verify(storeService, times(0)).retrieveStoreById(store.getId());
         verify(shiftRepository, times(0)).save(existingShift);
@@ -249,7 +248,7 @@ public class ShiftServiceTest {
                 LocalDateTime.now(),
                 LocalDateTime.now());
 
-        assertThrows(InvalidDateTimeException.class, () -> shiftService.updateShiftInfo(id, newShift));
+        assertThrows(ObjectConflictException.class, () -> shiftService.updateShiftInfo(id, newShift));
     }
 
     @Test
@@ -296,7 +295,7 @@ public class ShiftServiceTest {
         when(shiftRepository.findById(id)).thenReturn(Optional.of(shift));
         when(shiftRepository.findByEmployeeIdAndShiftDate(any(), any())).thenReturn(List.of(otherShift));
 
-        assertThrows(ConflictShiftException.class, () -> shiftService.swapShiftEmployee(id, newEmployee.getId()));
+        assertThrows(ObjectConflictException.class, () -> shiftService.swapShiftEmployee(id, newEmployee.getId()));
         verify(shiftRepository, times(1)).findByEmployeeIdAndShiftDate(any(), any());
     }
 }

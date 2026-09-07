@@ -24,7 +24,7 @@ public class RoleService {
     }
 
     public Role retrieveById(UUID id) {
-        return roleRepository.findById(id).orElseThrow(() -> new ObjectNotFoundException("Role not found, id: " + id));
+        return roleRepository.findById(id).orElseThrow(() -> new ObjectNotFoundException("Role", id));
     }
 
     public Role updateRoleName(UUID id, String newRoleName) {

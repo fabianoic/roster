@@ -31,7 +31,7 @@ public class AvailabilityService {
     }
 
     public Availability retrieveAvailabilityById(UUID availabilityId) {
-        return availabilityRepository.findById(availabilityId).orElseThrow(() -> new ObjectNotFoundException("Availability not found, id: " + availabilityId));
+        return availabilityRepository.findById(availabilityId).orElseThrow(() -> new ObjectNotFoundException("Availability", availabilityId));
     }
 
     public List<Availability> retrieveAllAvailabilityByEmployeeId(UUID employeeId) {

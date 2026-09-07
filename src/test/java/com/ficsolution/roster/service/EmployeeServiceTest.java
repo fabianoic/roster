@@ -1,8 +1,7 @@
 package com.ficsolution.roster.service;
 
-import com.ficsolution.roster.exception.EmailAlreadyExistsException;
+import com.ficsolution.roster.exception.ObjectConflictException;
 import com.ficsolution.roster.exception.ObjectNotFoundException;
-import com.ficsolution.roster.exception.PasswordNotEqualException;
 import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.model.Role;
 import com.ficsolution.roster.model.enumModel.EmployeeStatus;
@@ -78,7 +77,7 @@ public class EmployeeServiceTest {
                 LocalDateTime.now());
         when(employeeRepository.existsByEmail(email)).thenReturn(true);
 
-        assertThrows(EmailAlreadyExistsException.class, () -> employeeService.createEmployee(employee));
+        assertThrows(ObjectConflictException.class, () -> employeeService.createEmployee(employee));
         verify(employeeRepository, times(1)).existsByEmail(email);
         verify(employeeRepository, times(0)).save(employee);
         verify(roleService, times(0)).retrieveById(employee.getRole().getId());
@@ -224,7 +223,7 @@ public class EmployeeServiceTest {
                 LocalDateTime.now());
         when(employeeRepository.findById(id)).thenReturn(Optional.of(employee));
 
-        assertThrows(PasswordNotEqualException.class, () -> employeeService.changeEmployeePassword(id, "WRONGRANDOMHASHPASSWORD", null));
+        assertThrows(ObjectConflictException.class, () -> employeeService.changeEmployeePassword(id, "WRONGRANDOMHASHPASSWORD", null));
         verify(employeeRepository, times(1)).findById(id);
         verify(employeeRepository, times(0)).save(any(Employee.class));
     }
@@ -240,7 +239,7 @@ public class EmployeeServiceTest {
                 LocalDateTime.now());
         when(employeeRepository.findById(id)).thenReturn(Optional.of(employee));
 
-        assertThrows(PasswordNotEqualException.class, () -> employeeService.changeEmployeePassword(id, "RANDOMHASHPASSWORD", null));
+        assertThrows(ObjectConflictException.class, () -> employeeService.changeEmployeePassword(id, "RANDOMHASHPASSWORD", null));
         verify(employeeRepository, times(1)).findById(id);
         verify(employeeRepository, times(0)).save(any(Employee.class));
     }

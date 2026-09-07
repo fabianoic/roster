@@ -1,8 +1,6 @@
 package com.ficsolution.roster.service;
 
-import com.ficsolution.roster.exception.ActionNotAllowedException;
-import com.ficsolution.roster.exception.ConflictShiftException;
-import com.ficsolution.roster.exception.ActionNotAllowedException;
+import com.ficsolution.roster.exception.ObjectConflictException;
 import com.ficsolution.roster.exception.ObjectNotFoundException;
 import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.model.Shift;
@@ -32,7 +30,7 @@ public class ShiftSwapRequestService {
         Shift shift = shiftService.retrieveShiftById(shiftSwapRequest.getShift().getId());
 
         if (!shift.getEmployee().getId().equals(shiftSwapRequest.getRequester().getId())) {
-            throw new ConflictShiftException("This shift is not from the requester employee. id: " + shift.getId());
+            throw new ObjectConflictException("shift", "This shift is not from the requester employee. id: " + shift.getId());
         }
 
         Employee requester = employeeService.retrieveEmployeeById(shiftSwapRequest.getRequester().getId());
@@ -53,7 +51,7 @@ public class ShiftSwapRequestService {
     }
 
     public ShiftSwapRequest retrieveShiftSwapRequestById(UUID shiftSwapRequestId) {
-        return shiftSwapRequestRepository.findById(shiftSwapRequestId).orElseThrow(() -> new ObjectNotFoundException("Shift swap request not found, id: " + shiftSwapRequestId));
+        return shiftSwapRequestRepository.findById(shiftSwapRequestId).orElseThrow(() -> new ObjectNotFoundException("ShiftSwapRequest", shiftSwapRequestId));
     }
 
     public ShiftSwapRequest changeStatus(UUID shiftSwapRequestId, UUID employeeId, RequestStatus status) {
@@ -61,7 +59,7 @@ public class ShiftSwapRequestService {
 
         if (!shiftSwapRequest.getTarget().getId().equals(employeeId) ||
             !shiftSwapRequest.getStatus().equals(RequestStatus.PENDING)) {
-            throw new ActionNotAllowedException("Change status failed, action not allowed!");
+            throw new ObjectConflictException("status", "Change status failed, action not allowed!");
         }
 
         if (status.equals(RequestStatus.APPROVED)) {
@@ -81,6 +79,6 @@ public class ShiftSwapRequestService {
             return;
         }
 
-        throw new ActionNotAllowedException("Delete a shift swap request that isn't pending it's not allowed.");
+        throw new ObjectConflictException("shiftSwapRequest", "Delete a shift swap request that isn't pending it's not allowed.");
     }
 }
