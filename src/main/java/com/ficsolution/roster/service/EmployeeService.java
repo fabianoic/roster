@@ -54,7 +54,7 @@ public class EmployeeService {
     }
 
     public Employee retrieveEmployeeById(UUID id) {
-        return employeeRepository.findById(id).orElseThrow(() -> new ObjectNotFoundException("Employee", id));
+        return employeeRepository.findById(id).orElseThrow(() -> new ObjectNotFoundException("Employee", id.toString()));
     }
 
     public Employee updateEmployeeInfo(UUID id, Employee newEmployeeInfo) {

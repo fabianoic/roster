@@ -58,7 +58,7 @@ public class ShiftService {
     }
 
     public Shift retrieveShiftById(UUID id) {
-        return shiftRepository.findById(id).orElseThrow(() -> new ObjectNotFoundException("Shift", id));
+        return shiftRepository.findById(id).orElseThrow(() -> new ObjectNotFoundException("Shift", id.toString()));
     }
 
     public Shift updateShiftInfo(UUID id, Shift newShift) {

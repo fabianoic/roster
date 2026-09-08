@@ -51,7 +51,7 @@ public class ShiftSwapRequestService {
     }
 
     public ShiftSwapRequest retrieveShiftSwapRequestById(UUID shiftSwapRequestId) {
-        return shiftSwapRequestRepository.findById(shiftSwapRequestId).orElseThrow(() -> new ObjectNotFoundException("ShiftSwapRequest", shiftSwapRequestId));
+        return shiftSwapRequestRepository.findById(shiftSwapRequestId).orElseThrow(() -> new ObjectNotFoundException("ShiftSwapRequest", shiftSwapRequestId.toString()));
     }
 
     public ShiftSwapRequest changeStatus(UUID shiftSwapRequestId, UUID employeeId, RequestStatus status) {

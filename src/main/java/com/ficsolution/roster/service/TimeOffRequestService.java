@@ -33,7 +33,7 @@ public class TimeOffRequestService {
     }
 
     public TimeOffRequest retrieveTimeOffRequestById(UUID timeOffRequestId) {
-        return timeOffRequestRepository.findById(timeOffRequestId).orElseThrow(() -> new ObjectNotFoundException("Time off request", timeOffRequestId));
+        return timeOffRequestRepository.findById(timeOffRequestId).orElseThrow(() -> new ObjectNotFoundException("Time off request", timeOffRequestId.toString()));
     }
 
     public List<TimeOffRequest> retrieveAllTimeOffRequestsByEmployeeId(UUID employeeId) {
