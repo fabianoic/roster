@@ -3,19 +3,21 @@ package com.ficsolution.roster.service;
 import com.ficsolution.roster.exception.ObjectNotFoundException;
 import com.ficsolution.roster.model.Role;
 import com.ficsolution.roster.repository.RoleRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.ficsolution.roster.web.dto.role.RoleRequest;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.UUID;
 
 @Service
+@RequiredArgsConstructor
 public class RoleService {
 
-    @Autowired
-    private RoleRepository roleRepository;
+    private final RoleRepository roleRepository;
 
-    public Role createRole(Role role) {
+    public Role createRole(RoleRequest roleRequest) {
+        Role role = new Role(null, roleRequest.name());
         return roleRepository.save(role);
     }
 
@@ -27,9 +29,9 @@ public class RoleService {
         return roleRepository.findById(id).orElseThrow(() -> new ObjectNotFoundException("Role", id.toString()));
     }
 
-    public Role updateRoleName(UUID id, String newRoleName) {
+    public Role updateRoleName(UUID id, RoleRequest roleRequest) {
         Role role = retrieveById(id);
-        role.setName(newRoleName);
+        role.setName(roleRequest.name());
         return roleRepository.save(role);
     }
 

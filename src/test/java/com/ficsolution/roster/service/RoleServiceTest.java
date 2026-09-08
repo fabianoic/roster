@@ -3,6 +3,7 @@ package com.ficsolution.roster.service;
 import com.ficsolution.roster.exception.ObjectNotFoundException;
 import com.ficsolution.roster.model.Role;
 import com.ficsolution.roster.repository.RoleRepository;
+import com.ficsolution.roster.web.dto.role.RoleRequest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -26,7 +27,7 @@ public class RoleServiceTest {
     @Mock
     private RoleRepository roleRepository;
 
-    private UUID id = UUID.randomUUID();
+    private final UUID id = UUID.randomUUID();
 
     @Test
     void testRetrieveAllRoles() {
@@ -75,11 +76,12 @@ public class RoleServiceTest {
     void testUpdateRoleName() {
         // arrange
         Role role = new Role(id, "TEST_ROLE");
+        RoleRequest roleRequest = new RoleRequest("ROLE_TEST");
         when(roleRepository.findById(id)).thenReturn(Optional.of(role));
         when(roleRepository.save(any(Role.class))).thenReturn(role);
 
         // act
-        Role updatedRole = roleService.updateRoleName(id, "ROLE_TEST");
+        Role updatedRole = roleService.updateRoleName(id, roleRequest);
 
         // assert
         assertNotNull(updatedRole);
@@ -91,11 +93,12 @@ public class RoleServiceTest {
     @Test
     void testCreateRole() {
         // arrange
-        Role role = new Role(id, "TEST_ROLE");
+        RoleRequest roleRequest = new RoleRequest("TEST_ROLE");
+        Role role = new Role(null, "TEST_ROLE");
         when(roleRepository.save(any(Role.class))).thenReturn(role);
 
         // act & assert
-        assertNotNull(roleService.createRole(role));
+        assertNotNull(roleService.createRole(roleRequest));
         verify(roleRepository, times(1)).save(role);
     }
 
