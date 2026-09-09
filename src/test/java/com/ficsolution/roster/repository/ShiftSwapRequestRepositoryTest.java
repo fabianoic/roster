@@ -33,9 +33,8 @@ public class ShiftSwapRequestRepositoryTest {
 
     @Test
     void testCreateShiftSwapRequest() {
-        UUID id = UUID.randomUUID();
         ShiftSwapRequest shiftSwapRequest = new ShiftSwapRequest(
-                id,
+                null,
                 shiftRepository.findById(shiftId).get(),
                 employeeRepository.findById(employeeId).get(),
                 employeeRepository.findById(employee1Id).get(),
@@ -47,7 +46,7 @@ public class ShiftSwapRequestRepositoryTest {
         ShiftSwapRequest savedShiftSwapRequest = shiftSwapRequestRepository.save(shiftSwapRequest);
 
         assertNotNull(savedShiftSwapRequest);
-        assertEquals(id, savedShiftSwapRequest.getId());
+        assertNotNull(savedShiftSwapRequest.getId());
     }
 
     @Test

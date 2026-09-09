@@ -11,7 +11,6 @@ import org.testcontainers.utility.TestcontainersConfiguration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 import static com.ficsolution.roster.util.Util.storeId;
 import static org.junit.jupiter.api.Assertions.*;
@@ -27,8 +26,7 @@ public class StoreRepositoryTest {
     @Test
     void testCreateStore() {
         // arrange
-        UUID id = UUID.randomUUID();
-        Store store = new Store(id, "Ballsbridge", "Shelbourn 01 - Dublin 4", LocalDateTime.now(), LocalDateTime.now());
+        Store store = new Store(null, "Ballsbridge", "Shelbourn 01 - Dublin 4", LocalDateTime.now(), LocalDateTime.now());
 
         // act
         store = storeRepository.save(store);
@@ -37,7 +35,6 @@ public class StoreRepositoryTest {
         assertNotNull(store);
         assertNotNull(store.getCreatedAt());
         assertNotNull(store.getUpdatedAt());
-        assertEquals(id, store.getId());
         assertEquals("Ballsbridge", store.getName());
     }
 

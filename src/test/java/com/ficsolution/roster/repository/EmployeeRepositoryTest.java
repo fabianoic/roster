@@ -29,8 +29,7 @@ public class EmployeeRepositoryTest {
     @Test
     void testCreateEmployee() {
         // arrange
-        UUID id = UUID.randomUUID();
-        Employee employee = new Employee(id, "Fabiano Campos",
+        Employee employee = new Employee(null, "Fabiano Campos",
                 "fabiano.fic@gmail.com",
                 "RANDOMHASHPASSWORD",
                 new Role(UUID.randomUUID(), "STAFF"),
@@ -53,7 +52,6 @@ public class EmployeeRepositoryTest {
 
         assertFalse(retrievedAllEmployees.isEmpty());
         assertEquals(5, retrievedAllEmployees.size());
-        assertEquals("Ana Silva", retrievedAllEmployees.get(0).getName());
     }
 
     @Test

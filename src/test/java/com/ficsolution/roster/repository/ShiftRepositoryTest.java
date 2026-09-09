@@ -14,7 +14,6 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 import static com.ficsolution.roster.util.Util.*;
 import static org.junit.jupiter.api.Assertions.*;
@@ -35,9 +34,8 @@ public class ShiftRepositoryTest {
 
     @Test
     void testCreateShift() {
-        UUID id = UUID.randomUUID();
         Shift shift = new Shift(
-                id,
+                null,
                 employeeRepository.findById(employeeId).get(),
                 storeRepository.findById(storeId).get(),
                 LocalDate.now(),
@@ -49,7 +47,6 @@ public class ShiftRepositoryTest {
         Shift createdShift = shiftRepository.save(shift);
 
         assertNotNull(createdShift);
-        assertEquals(id, createdShift.getId());
         assertEquals(ShiftStatus.SCHEDULED, createdShift.getStatus());
     }
 
@@ -71,9 +68,8 @@ public class ShiftRepositoryTest {
 
     @Test
     void testRetrieveShiftBetweenTwoDates() {
-        UUID id = UUID.randomUUID();
         Shift shift = new Shift(
-                id,
+                null,
                 employeeRepository.findById(employeeId).get(),
                 storeRepository.findById(storeId).get(),
                 LocalDate.now(),
@@ -91,9 +87,8 @@ public class ShiftRepositoryTest {
 
     @Test
     void testRetrieveShiftEmployeeIdandShiftDateBetween() {
-        UUID id = UUID.randomUUID();
         Shift shift = new Shift(
-                id,
+                null,
                 employeeRepository.findById(employeeId).get(),
                 storeRepository.findById(storeId).get(),
                 LocalDate.now(),

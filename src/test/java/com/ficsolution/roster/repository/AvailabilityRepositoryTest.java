@@ -12,7 +12,6 @@ import java.time.DayOfWeek;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 import static com.ficsolution.roster.util.Util.availabilityId;
 import static com.ficsolution.roster.util.Util.employeeId;
@@ -31,9 +30,8 @@ public class AvailabilityRepositoryTest {
 
     @Test
     void testCreateAndRetrieveAvailabilityById() {
-        UUID id = UUID.randomUUID();
         Availability availability = new Availability(
-                id,
+                null,
                 employeeRepository.findById(employeeId).get(),
                 DayOfWeek.THURSDAY,
                 false,
@@ -41,9 +39,9 @@ public class AvailabilityRepositoryTest {
                 LocalTime.of(0, 0),
                 LocalTime.of(23, 59)
         );
-        availabilityRepository.save(availability);
+        availability = availabilityRepository.save(availability);
 
-        Optional<Availability> retrievedAvailability = availabilityRepository.findById(id);
+        Optional<Availability> retrievedAvailability = availabilityRepository.findById(availability.getId());
 
         assertFalse(retrievedAvailability.isEmpty());
         assertEquals(DayOfWeek.THURSDAY, retrievedAvailability.get().getWeekday());
@@ -61,9 +59,8 @@ public class AvailabilityRepositoryTest {
 
     @Test
     void testRetrieveAllAvailabilityByEmployeeId() {
-        UUID id = UUID.randomUUID();
         Availability availability = new Availability(
-                id,
+                null,
                 employeeRepository.findById(employeeId).get(),
                 DayOfWeek.THURSDAY,
                 false,

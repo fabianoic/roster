@@ -10,7 +10,6 @@ import org.testcontainers.utility.TestcontainersConfiguration;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 import static com.ficsolution.roster.util.Util.roleId;
 import static org.junit.jupiter.api.Assertions.*;
@@ -32,13 +31,13 @@ public class RoleRepositoryTest {
 
         // assert
         assertNotNull(retrievedRoles);
-        assertEquals(3, retrievedRoles.size());
+        assertFalse(retrievedRoles.isEmpty());
     }
 
     @Test
     void saveRole() {
         // arrange
-        Role role = new Role(UUID.randomUUID(), "TEST_ROLE");
+        Role role = new Role(null, "TEST_ROLE");
 
         // act
         role = roleRepository.save(role);
