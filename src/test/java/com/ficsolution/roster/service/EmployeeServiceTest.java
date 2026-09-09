@@ -196,18 +196,20 @@ public class EmployeeServiceTest {
                 LocalDateTime.now());
         Employee employeeNewPassword = new Employee(id, "Fabiano Campos",
                 "fabiano.fic@gmail.com",
-                "NEWRANDOMHASHPASSWORD",
+                "ENCODEDPASSWORD",
                 new Role(UUID.fromString("df501f58-dc8a-470c-a26d-5786633b6009"), "STAFF"),
                 EmployeeStatus.ACTIVE,
                 LocalDateTime.now(),
                 LocalDateTime.now());
         when(employeeRepository.findById(id)).thenReturn(Optional.of(employee));
         when(employeeRepository.save(any(Employee.class))).thenReturn(employeeNewPassword);
+        when(passwordEncoder.matches(any(), any())).thenReturn(true);
+        when(passwordEncoder.encode(any())).thenReturn("ENCODEDPASSWORD");
 
         Employee updatedEmployee = employeeService.changeEmployeePassword(id, employee.getPassword(), employeeNewPassword.getPassword());
 
         assertNotNull(updatedEmployee);
-        assertEquals("NEWRANDOMHASHPASSWORD", updatedEmployee.getPassword());
+        assertEquals("ENCODEDPASSWORD", updatedEmployee.getPassword());
         verify(employeeRepository, times(1)).findById(id);
         verify(employeeRepository, times(1)).save(employeeNewPassword);
     }
@@ -222,8 +224,9 @@ public class EmployeeServiceTest {
                 LocalDateTime.now(),
                 LocalDateTime.now());
         when(employeeRepository.findById(id)).thenReturn(Optional.of(employee));
+        when(passwordEncoder.matches(any(), any())).thenReturn(false);
 
-        assertThrows(ObjectConflictException.class, () -> employeeService.changeEmployeePassword(id, "WRONGRANDOMHASHPASSWORD", null));
+        assertThrows(ObjectConflictException.class, () -> employeeService.changeEmployeePassword(id, "WRONGRANDOMHASHPASSWORD", "NEWPASSWORD"));
         verify(employeeRepository, times(1)).findById(id);
         verify(employeeRepository, times(0)).save(any(Employee.class));
     }
@@ -240,7 +243,7 @@ public class EmployeeServiceTest {
         when(employeeRepository.findById(id)).thenReturn(Optional.of(employee));
 
         assertThrows(ObjectConflictException.class, () -> employeeService.changeEmployeePassword(id, "RANDOMHASHPASSWORD", null));
-        verify(employeeRepository, times(1)).findById(id);
+        verify(employeeRepository, times(0)).findById(id);
         verify(employeeRepository, times(0)).save(any(Employee.class));
     }
 

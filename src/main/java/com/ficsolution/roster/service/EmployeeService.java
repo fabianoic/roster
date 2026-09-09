@@ -82,16 +82,19 @@ public class EmployeeService {
     }
 
     public Employee changeEmployeePassword(UUID id, String oldPassword, String newPassword) {
-        Employee employee = retrieveEmployeeById(id);
-        if (oldPassword.equals(employee.getPassword()) && isValidPassword(newPassword)) {
-            employee.setPassword(newPassword);
-            return employeeRepository.save(employee);
+        if (isValidPassword(oldPassword) && isValidPassword(newPassword)) {
+            Employee employee = retrieveEmployeeById(id);
+            if (passwordEncoder.matches(oldPassword, employee.getPassword())) {
+                employee.setPassword(passwordEncoder.encode(newPassword));
+                return employeeRepository.save(employee);
+            }
+            throw new ObjectConflictException("Employee", "The old password is not correct!");
         }
-        throw new ObjectConflictException("E-mail", "The old password is not correct!");
+        throw new ObjectConflictException("Employee", "The old password or the new password is not a valid password!");
     }
 
-    private boolean isValidPassword(String newPassword) {
+    private boolean isValidPassword(String password) {
         //develop more security validation
-        return newPassword != null && !newPassword.isBlank();
+        return password != null && !password.isBlank();
     }
 }
