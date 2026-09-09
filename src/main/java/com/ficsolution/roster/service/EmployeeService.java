@@ -6,6 +6,9 @@ import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.model.Role;
 import com.ficsolution.roster.model.enumModel.EmployeeStatus;
 import com.ficsolution.roster.repository.EmployeeRepository;
+import com.ficsolution.roster.web.dto.employee.ChangePasswordRequest;
+import com.ficsolution.roster.web.dto.employee.CreateEmployeeRequest;
+import com.ficsolution.roster.web.dto.employee.UpdateEmployeeRequest;
 import lombok.AllArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -24,24 +27,23 @@ public class EmployeeService {
     private final PasswordEncoder passwordEncoder;
 
     @Transactional
-    public Employee createEmployee(Employee employee) {
-        String normalizedEmail = employee.getEmail().trim().toLowerCase();
+    public Employee createEmployee(CreateEmployeeRequest createEmployeeRequest) {
+        String normalizedEmail = createEmployeeRequest.email();
 
         if (employeeRepository.existsByEmail(normalizedEmail)) {
             throw new ObjectConflictException("E-mail", "This e-mail already exists.");
         }
 
-        Role role = roleService.retrieveById(employee.getRole().getId());
+        Role role = roleService.retrieveById(createEmployeeRequest.roleId());
 
-        String hashedPassword = passwordEncoder.encode(employee.getPassword());
-
+        Employee employee = createEmployeeRequest.toEntity();
+        String hashedPassword = passwordEncoder.encode(createEmployeeRequest.password());
         employee.setRole(role);
         employee.setPassword(hashedPassword);
         employee.setStatus(EmployeeStatus.ACTIVE);
         employee.setCreatedAt(LocalDateTime.now());
         employee.setUpdatedAt(LocalDateTime.now());
         employee.setEmail(normalizedEmail);
-
 
         return employeeRepository.save(employee);
 
@@ -58,14 +60,15 @@ public class EmployeeService {
     }
 
     @Transactional
-    public Employee updateEmployeeInfo(UUID id, Employee newEmployeeInfo) {
+    public Employee updateEmployeeInfo(UUID id, UpdateEmployeeRequest updateEmployeeRequest) {
         Employee employee = retrieveEmployeeById(id);
-        employee.setName(newEmployeeInfo.getName());
 
-        Role newRole = roleService.retrieveById(newEmployeeInfo.getRole().getId());
-        employee.setRole(newRole);
-        employee.setEmail(newEmployeeInfo.getEmail());
-
+        if (!employee.getRole().getId().equals(updateEmployeeRequest.roleId())) {
+            Role newRole = roleService.retrieveById(updateEmployeeRequest.roleId());
+            employee.setRole(newRole);
+        }
+        employee.setName(updateEmployeeRequest.name());
+        employee.setEmail(updateEmployeeRequest.email());
         employee.setUpdatedAt(LocalDateTime.now());
 
         return employeeRepository.save(employee);
@@ -84,11 +87,11 @@ public class EmployeeService {
     }
 
     @Transactional
-    public Employee changeEmployeePassword(UUID id, String oldPassword, String newPassword) {
-        if (isValidPassword(oldPassword) && isValidPassword(newPassword)) {
+    public Employee changeEmployeePassword(UUID id, ChangePasswordRequest changePasswordRequest) {
+        if (isValidPassword(changePasswordRequest.oldPassword()) && isValidPassword(changePasswordRequest.newPassword())) {
             Employee employee = retrieveEmployeeById(id);
-            if (passwordEncoder.matches(oldPassword, employee.getPassword())) {
-                employee.setPassword(passwordEncoder.encode(newPassword));
+            if (passwordEncoder.matches(changePasswordRequest.oldPassword(), employee.getPassword())) {
+                employee.setPassword(passwordEncoder.encode(changePasswordRequest.newPassword()));
                 return employeeRepository.save(employee);
             }
             throw new ObjectConflictException("Employee", "The old password is not correct!");
