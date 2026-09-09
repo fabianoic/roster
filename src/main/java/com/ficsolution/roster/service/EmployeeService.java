@@ -9,6 +9,7 @@ import com.ficsolution.roster.repository.EmployeeRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -26,6 +27,7 @@ public class EmployeeService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Transactional
     public Employee createEmployee(Employee employee) {
         String normalizedEmail = employee.getEmail().trim().toLowerCase();
 
@@ -49,14 +51,17 @@ public class EmployeeService {
 
     }
 
+    @Transactional(readOnly = true)
     public List<Employee> retrieveAllEmployees() {
         return employeeRepository.findAll();
     }
 
+    @Transactional(readOnly = true)
     public Employee retrieveEmployeeById(UUID id) {
         return employeeRepository.findById(id).orElseThrow(() -> new ObjectNotFoundException("Employee", id.toString()));
     }
 
+    @Transactional
     public Employee updateEmployeeInfo(UUID id, Employee newEmployeeInfo) {
         Employee employee = retrieveEmployeeById(id);
         employee.setName(newEmployeeInfo.getName());
@@ -70,6 +75,7 @@ public class EmployeeService {
         return employeeRepository.save(employee);
     }
 
+    @Transactional
     public Employee changeEmployeeStatus(UUID id) {
         Employee employee = retrieveEmployeeById(id);
 
@@ -81,6 +87,7 @@ public class EmployeeService {
         return employeeRepository.save(employee);
     }
 
+    @Transactional
     public Employee changeEmployeePassword(UUID id, String oldPassword, String newPassword) {
         if (isValidPassword(oldPassword) && isValidPassword(newPassword)) {
             Employee employee = retrieveEmployeeById(id);
@@ -96,5 +103,15 @@ public class EmployeeService {
     private boolean isValidPassword(String password) {
         //develop more security validation
         return password != null && !password.isBlank();
+    }
+
+    @Transactional(readOnly = true)
+    public Employee retrieveEmployeeByEmail(String email) {
+        return employeeRepository.findByEmail(email).orElseThrow(() -> new ObjectNotFoundException("Employee", email));
+    }
+
+    @Transactional
+    public void updateEmployeeLockInfo(Employee employee) {
+        employeeRepository.save(employee);
     }
 }

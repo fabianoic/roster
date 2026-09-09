@@ -50,7 +50,10 @@ public class EmployeeServiceTest {
                 role,
                 EmployeeStatus.ACTIVE,
                 LocalDateTime.now(),
-                LocalDateTime.now());
+                LocalDateTime.now(),
+                false,
+                0,
+                null);
         when(employeeRepository.save(any(Employee.class))).thenReturn(employee);
         when(employeeRepository.existsByEmail(email)).thenReturn(false);
         when(passwordEncoder.encode(any())).thenReturn("ENCODEDPASSWORD");
@@ -74,7 +77,10 @@ public class EmployeeServiceTest {
                 new Role(UUID.fromString("df501f58-dc8a-470c-a26d-5786633b6009"), "STAFF"),
                 EmployeeStatus.ACTIVE,
                 LocalDateTime.now(),
-                LocalDateTime.now());
+                LocalDateTime.now(),
+                false,
+                0,
+                null);
         when(employeeRepository.existsByEmail(email)).thenReturn(true);
 
         assertThrows(ObjectConflictException.class, () -> employeeService.createEmployee(employee));
@@ -93,7 +99,10 @@ public class EmployeeServiceTest {
                 role,
                 EmployeeStatus.ACTIVE,
                 LocalDateTime.now(),
-                LocalDateTime.now());
+                LocalDateTime.now(),
+                false,
+                0,
+                null);
         when(employeeRepository.existsByEmail(email)).thenReturn(false);
         doThrow(ObjectNotFoundException.class).when(roleService).retrieveById(role.getId());
 
@@ -112,14 +121,20 @@ public class EmployeeServiceTest {
                         new Role(UUID.fromString("df501f58-dc8a-470c-a26d-5786633b6009"), "STAFF"),
                         EmployeeStatus.ACTIVE,
                         LocalDateTime.now(),
-                        LocalDateTime.now()),
+                        LocalDateTime.now(),
+                        false,
+                        0,
+                        null),
                 new Employee(UUID.randomUUID(), "Oscar",
                         "oscar@gmail.com",
                         "RANDOMHASHPASSWORD",
                         new Role(UUID.fromString("df501f58-dc8a-470c-a26d-5786633b6009"), "STAFF"),
                         EmployeeStatus.ACTIVE,
                         LocalDateTime.now(),
-                        LocalDateTime.now())
+                        LocalDateTime.now(),
+                        false,
+                        0,
+                        null)
         );
         when(employeeRepository.findAll()).thenReturn(employees);
 
@@ -139,7 +154,10 @@ public class EmployeeServiceTest {
                 new Role(UUID.fromString("df501f58-dc8a-470c-a26d-5786633b6009"), "STAFF"),
                 EmployeeStatus.ACTIVE,
                 LocalDateTime.now(),
-                LocalDateTime.now());
+                LocalDateTime.now(),
+                false,
+                0,
+                null);
         when(employeeRepository.findById(id)).thenReturn(Optional.of(employee));
 
         Employee retrievedEmployee = employeeService.retrieveEmployeeById(id);
@@ -166,14 +184,20 @@ public class EmployeeServiceTest {
                 role,
                 EmployeeStatus.ACTIVE,
                 LocalDateTime.now(),
-                LocalDateTime.now());
+                LocalDateTime.now(),
+                false,
+                0,
+                null);
         Employee editEmployee = new Employee(id, "Oscar",
                 "oscar@gmail.com",
                 "RANDOMHASHPASSWORD",
                 role,
                 EmployeeStatus.ACTIVE,
                 LocalDateTime.now(),
-                LocalDateTime.now());
+                LocalDateTime.now(),
+                false,
+                0,
+                null);
         when(employeeRepository.findById(id)).thenReturn(Optional.of(employee));
         when(employeeRepository.save(any(Employee.class))).thenReturn(editEmployee);
         when(roleService.retrieveById(any(UUID.class))).thenReturn(role);
@@ -193,14 +217,20 @@ public class EmployeeServiceTest {
                 new Role(UUID.fromString("df501f58-dc8a-470c-a26d-5786633b6009"), "STAFF"),
                 EmployeeStatus.ACTIVE,
                 LocalDateTime.now(),
-                LocalDateTime.now());
+                LocalDateTime.now(),
+                false,
+                0,
+                null);
         Employee employeeNewPassword = new Employee(id, "Fabiano Campos",
                 "fabiano.fic@gmail.com",
                 "ENCODEDPASSWORD",
                 new Role(UUID.fromString("df501f58-dc8a-470c-a26d-5786633b6009"), "STAFF"),
                 EmployeeStatus.ACTIVE,
                 LocalDateTime.now(),
-                LocalDateTime.now());
+                LocalDateTime.now(),
+                false,
+                0,
+                null);
         when(employeeRepository.findById(id)).thenReturn(Optional.of(employee));
         when(employeeRepository.save(any(Employee.class))).thenReturn(employeeNewPassword);
         when(passwordEncoder.matches(any(), any())).thenReturn(true);
@@ -222,7 +252,10 @@ public class EmployeeServiceTest {
                 new Role(UUID.fromString("df501f58-dc8a-470c-a26d-5786633b6009"), "STAFF"),
                 EmployeeStatus.ACTIVE,
                 LocalDateTime.now(),
-                LocalDateTime.now());
+                LocalDateTime.now(),
+                false,
+                0,
+                null);
         when(employeeRepository.findById(id)).thenReturn(Optional.of(employee));
         when(passwordEncoder.matches(any(), any())).thenReturn(false);
 
@@ -239,8 +272,10 @@ public class EmployeeServiceTest {
                 new Role(UUID.fromString("df501f58-dc8a-470c-a26d-5786633b6009"), "STAFF"),
                 EmployeeStatus.ACTIVE,
                 LocalDateTime.now(),
-                LocalDateTime.now());
-        when(employeeRepository.findById(id)).thenReturn(Optional.of(employee));
+                LocalDateTime.now(),
+                false,
+                0,
+                null);
 
         assertThrows(ObjectConflictException.class, () -> employeeService.changeEmployeePassword(id, "RANDOMHASHPASSWORD", null));
         verify(employeeRepository, times(0)).findById(id);
@@ -255,7 +290,10 @@ public class EmployeeServiceTest {
                 new Role(UUID.fromString("df501f58-dc8a-470c-a26d-5786633b6009"), "STAFF"),
                 EmployeeStatus.ACTIVE,
                 LocalDateTime.now(),
-                LocalDateTime.now());
+                LocalDateTime.now(),
+                false,
+                0,
+                null);
         when(employeeRepository.findById(id)).thenReturn(Optional.of(employee));
         when(employeeRepository.save(employee)).thenReturn(employee);
 

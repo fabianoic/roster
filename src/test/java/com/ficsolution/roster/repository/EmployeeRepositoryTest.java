@@ -35,7 +35,10 @@ public class EmployeeRepositoryTest {
                 new Role(UUID.randomUUID(), "STAFF"),
                 EmployeeStatus.ACTIVE,
                 LocalDateTime.now(),
-                LocalDateTime.now());
+                LocalDateTime.now(),
+                false,
+                0,
+                null);
 
         // act
         Employee savedEmployee = employeeRepository.save(employee);

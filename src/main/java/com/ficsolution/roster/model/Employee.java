@@ -41,4 +41,11 @@ public class Employee {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @Column(name = "account_locked", nullable = false)
+    private boolean accountLocked = false;
+    @Column(name = "failed_attempt")
+    private int failedAttempt = 0;
+    @Column(name = "lock_time")
+    private LocalDateTime lockTime;
 }

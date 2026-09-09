@@ -52,7 +52,10 @@ public class ShiftServiceTest {
                 new Role(UUID.fromString("df501f58-dc8a-470c-a26d-5786633b6009"), "STAFF"),
                 EmployeeStatus.ACTIVE,
                 LocalDateTime.now(),
-                LocalDateTime.now());
+                LocalDateTime.now(),
+                false,
+                0,
+                null);
 
         store = new Store(UUID.randomUUID(), "Blackrock", "Blackrock Shopping Center", LocalDateTime.now(), LocalDateTime.now());
 
@@ -259,7 +262,10 @@ public class ShiftServiceTest {
                 new Role(UUID.fromString("df501f58-dc8a-470c-a26d-5786633b6009"), "STAFF"),
                 EmployeeStatus.ACTIVE,
                 LocalDateTime.now(),
-                LocalDateTime.now());
+                LocalDateTime.now(),
+                false,
+                0,
+                null);
         when(shiftRepository.findById(id)).thenReturn(Optional.of(shift));
         when(employeeService.retrieveEmployeeById(newEmployee.getId())).thenReturn(newEmployee);
         when(shiftRepository.save(any(Shift.class))).thenReturn(shift);
@@ -280,7 +286,10 @@ public class ShiftServiceTest {
                 new Role(UUID.fromString("df501f58-dc8a-470c-a26d-5786633b6009"), "STAFF"),
                 EmployeeStatus.ACTIVE,
                 LocalDateTime.now(),
-                LocalDateTime.now());
+                LocalDateTime.now(),
+                false,
+                0,
+                null);
 
         Shift otherShift = new Shift(
                 id,
