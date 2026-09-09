@@ -22,7 +22,6 @@ public class Availability {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "employee_id", nullable = false)
     private Employee employee;
-    @Enumerated(EnumType.ORDINAL)
     private DayOfWeek weekday;
     @Column(name = "is_available", nullable = false)
     private boolean isAvailable = false;
