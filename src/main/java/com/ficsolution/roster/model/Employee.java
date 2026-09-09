@@ -19,6 +19,8 @@ import java.util.UUID;
 public class Employee {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
     @Column(length = 120, nullable = false)
     private String name;

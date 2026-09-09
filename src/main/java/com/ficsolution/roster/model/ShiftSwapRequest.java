@@ -18,6 +18,8 @@ import java.util.UUID;
 public class ShiftSwapRequest {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "shift_id", nullable = false)
