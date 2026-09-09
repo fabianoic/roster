@@ -6,6 +6,7 @@ import com.ficsolution.roster.model.TimeOffRequest;
 import com.ficsolution.roster.repository.TimeOffRequestRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -20,6 +21,7 @@ public class TimeOffRequestService {
     @Autowired
     private EmployeeService employeeService;
 
+    @Transactional
     public TimeOffRequest createTimeOffRequest(TimeOffRequest timeOffRequest) {
         Employee employee = employeeService.retrieveEmployeeById(timeOffRequest.getEmployee().getId());
 
@@ -28,18 +30,22 @@ public class TimeOffRequestService {
         return timeOffRequestRepository.save(timeOffRequest);
     }
 
+    @Transactional(readOnly = true)
     public List<TimeOffRequest> findAllTimeOffRequests() {
         return timeOffRequestRepository.findAll();
     }
 
+    @Transactional(readOnly = true)
     public TimeOffRequest retrieveTimeOffRequestById(UUID timeOffRequestId) {
         return timeOffRequestRepository.findById(timeOffRequestId).orElseThrow(() -> new ObjectNotFoundException("Time off request", timeOffRequestId.toString()));
     }
 
+    @Transactional(readOnly = true)
     public List<TimeOffRequest> retrieveAllTimeOffRequestsByEmployeeId(UUID employeeId) {
         return timeOffRequestRepository.findByEmployeeId(employeeId);
     }
 
+    @Transactional
     public TimeOffRequest updateTimeOffRequest(UUID timeOffRequestId, TimeOffRequest newTimeOffRequest) {
         TimeOffRequest timeOffRequest = retrieveTimeOffRequestById(timeOffRequestId);
 
@@ -53,6 +59,7 @@ public class TimeOffRequestService {
         return timeOffRequestRepository.save(timeOffRequest);
     }
 
+    @Transactional
     public void deleteTimeOffRequest(UUID timeOffRequestId) {
         TimeOffRequest timeOffRequest = retrieveTimeOffRequestById(timeOffRequestId);
 

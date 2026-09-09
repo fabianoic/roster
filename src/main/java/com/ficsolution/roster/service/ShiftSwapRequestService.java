@@ -9,6 +9,7 @@ import com.ficsolution.roster.model.enumModel.RequestStatus;
 import com.ficsolution.roster.repository.ShiftSwapRequestRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -26,6 +27,7 @@ public class ShiftSwapRequestService {
     @Autowired
     private EmployeeService employeeService;
 
+    @Transactional
     public ShiftSwapRequest createShiftSwapRequest(ShiftSwapRequest shiftSwapRequest) {
         Shift shift = shiftService.retrieveShiftById(shiftSwapRequest.getShift().getId());
 
@@ -46,14 +48,17 @@ public class ShiftSwapRequestService {
         return shiftSwapRequestRepository.save(shiftSwapRequest);
     }
 
+    @Transactional(readOnly = true)
     public List<ShiftSwapRequest> retrieveAllShiftSwapRequests() {
         return shiftSwapRequestRepository.findAll();
     }
 
+    @Transactional(readOnly = true)
     public ShiftSwapRequest retrieveShiftSwapRequestById(UUID shiftSwapRequestId) {
         return shiftSwapRequestRepository.findById(shiftSwapRequestId).orElseThrow(() -> new ObjectNotFoundException("ShiftSwapRequest", shiftSwapRequestId.toString()));
     }
 
+    @Transactional
     public ShiftSwapRequest changeStatus(UUID shiftSwapRequestId, UUID employeeId, RequestStatus status) {
         ShiftSwapRequest shiftSwapRequest = retrieveShiftSwapRequestById(shiftSwapRequestId);
 
@@ -71,6 +76,7 @@ public class ShiftSwapRequestService {
         return shiftSwapRequestRepository.save(shiftSwapRequest);
     }
 
+    @Transactional
     public void deleteShiftSwapRequest(UUID shiftSwapRequestId) {
         ShiftSwapRequest shiftSwapRequest = retrieveShiftSwapRequestById(shiftSwapRequestId);
 

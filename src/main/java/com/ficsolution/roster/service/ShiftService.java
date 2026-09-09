@@ -8,6 +8,7 @@ import com.ficsolution.roster.model.Store;
 import com.ficsolution.roster.repository.ShiftRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -26,6 +27,7 @@ public class ShiftService {
     @Autowired
     private StoreService storeService;
 
+    @Transactional
     public Shift createShift(Shift shift) {
         validShiftTime(shift);
         validConflictShiftDateAndTime(shift.getEmployee().getId(), shift);
@@ -45,22 +47,27 @@ public class ShiftService {
         }
     }
 
+    @Transactional(readOnly = true)
     public List<Shift> retrieveAllShifts() {
         return shiftRepository.findAll();
     }
 
+    @Transactional(readOnly = true)
     public List<Shift> retrieveAllShiftsBetweenDates(LocalDate startDate, LocalDate endDate) {
         return shiftRepository.findByShiftDateBetween(startDate, endDate);
     }
 
+    @Transactional(readOnly = true)
     public List<Shift> retrieveShiftByEmployeeIdAndShiftDateBetween(UUID employeeId, LocalDate startDate, LocalDate endDate) {
         return shiftRepository.findByEmployeeIdAndShiftDateBetween(employeeId, startDate, endDate);
     }
 
+    @Transactional(readOnly = true)
     public Shift retrieveShiftById(UUID id) {
         return shiftRepository.findById(id).orElseThrow(() -> new ObjectNotFoundException("Shift", id.toString()));
     }
 
+    @Transactional
     public Shift updateShiftInfo(UUID id, Shift newShift) {
         validShiftTime(newShift);
         Shift shift = retrieveShiftById(id);
@@ -76,6 +83,7 @@ public class ShiftService {
         return shiftRepository.save(shift);
     }
 
+    @Transactional
     public Shift swapShiftEmployee(UUID shiftId, UUID employeeId) {
         Shift shift = retrieveShiftById(shiftId);
         validConflictShiftDateAndTime(employeeId, shift);

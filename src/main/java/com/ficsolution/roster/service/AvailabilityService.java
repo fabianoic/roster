@@ -6,6 +6,7 @@ import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.repository.AvailabilityRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
@@ -18,6 +19,7 @@ public class AvailabilityService {
     @Autowired
     private EmployeeService employeeService;
 
+    @Transactional
     public Availability createAvailability(Availability availability) {
         Employee employee = employeeService.retrieveEmployeeById(availability.getEmployee().getId());
 
@@ -26,18 +28,22 @@ public class AvailabilityService {
         return availabilityRepository.save(availability);
     }
 
+    @Transactional(readOnly = true)
     public List<Availability> findAllAvailabilities() {
         return availabilityRepository.findAll();
     }
 
+    @Transactional(readOnly = true)
     public Availability retrieveAvailabilityById(UUID availabilityId) {
         return availabilityRepository.findById(availabilityId).orElseThrow(() -> new ObjectNotFoundException("Availability", availabilityId.toString()));
     }
 
+    @Transactional(readOnly = true)
     public List<Availability> retrieveAllAvailabilityByEmployeeId(UUID employeeId) {
         return availabilityRepository.findByEmployeeId(employeeId);
     }
 
+    @Transactional
     public Availability updateAvailability(UUID availabilityId, Availability newAvailability) {
         Availability availability = retrieveAvailabilityById(availabilityId);
 
@@ -50,6 +56,7 @@ public class AvailabilityService {
         return availabilityRepository.save(availability);
     }
 
+    @Transactional
     public void deleteAvailability(UUID availabilityId) {
         Availability availability = retrieveAvailabilityById(availabilityId);
 
