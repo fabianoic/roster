@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -52,7 +53,7 @@ public class RoleControllerTest {
         given(roleService.createRole(any(RoleRequest.class))).willReturn(role);
 
         mockMvc.perform(post("/roles")
-                        .with(jwt())
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_MANAGER")))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(new RoleRequest("NEW_ROLE"))))
                 .andExpect(status().isCreated())
@@ -64,7 +65,7 @@ public class RoleControllerTest {
     @Test
     void mustReturn400WhenEmptyName() throws Exception {
         mockMvc.perform(post("/roles")
-                        .with(jwt())
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_MANAGER")))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(new RoleRequest(""))))
                 .andExpect(status().isBadRequest());
@@ -76,7 +77,7 @@ public class RoleControllerTest {
         given(roleService.retrieveById(id)).willThrow(new ObjectNotFoundException("Role", id.toString()));
 
         mockMvc.perform(get("/roles/{id}", id)
-                        .with(jwt()))
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_MANAGER"))))
                 .andExpect(status().isNotFound());
     }
 
@@ -85,7 +86,7 @@ public class RoleControllerTest {
         UUID id = UUID.randomUUID();
 
         mockMvc.perform(delete("/roles/{id}", id)
-                        .with(jwt()))
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_MANAGER"))))
                 .andExpect(status().isNoContent());
 
         then(roleService).should().deleteRole(id);
