@@ -4,7 +4,7 @@ import com.ficsolution.roster.exception.ObjectNotFoundException;
 import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.model.TimeOffRequest;
 import com.ficsolution.roster.repository.TimeOffRequestRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,13 +13,11 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
+@AllArgsConstructor
 public class TimeOffRequestService {
 
-    @Autowired
-    private TimeOffRequestRepository timeOffRequestRepository;
-
-    @Autowired
-    private EmployeeService employeeService;
+    private final TimeOffRequestRepository timeOffRequestRepository;
+    private final EmployeeService employeeService;
 
     @Transactional
     public TimeOffRequest createTimeOffRequest(TimeOffRequest timeOffRequest) {

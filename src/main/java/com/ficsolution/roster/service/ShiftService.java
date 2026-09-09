@@ -6,7 +6,7 @@ import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.model.Shift;
 import com.ficsolution.roster.model.Store;
 import com.ficsolution.roster.repository.ShiftRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,16 +16,12 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
+@AllArgsConstructor
 public class ShiftService {
 
-    @Autowired
-    private ShiftRepository shiftRepository;
-
-    @Autowired
-    private EmployeeService employeeService;
-
-    @Autowired
-    private StoreService storeService;
+    private final ShiftRepository shiftRepository;
+    private final EmployeeService employeeService;
+    private final StoreService storeService;
 
     @Transactional
     public Shift createShift(Shift shift) {

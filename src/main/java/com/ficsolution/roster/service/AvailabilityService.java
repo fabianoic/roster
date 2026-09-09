@@ -4,7 +4,7 @@ import com.ficsolution.roster.exception.ObjectNotFoundException;
 import com.ficsolution.roster.model.Availability;
 import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.repository.AvailabilityRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,12 +12,11 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
+@AllArgsConstructor
 public class AvailabilityService {
 
-    @Autowired
-    private AvailabilityRepository availabilityRepository;
-    @Autowired
-    private EmployeeService employeeService;
+    private final AvailabilityRepository availabilityRepository;
+    private final EmployeeService employeeService;
 
     @Transactional
     public Availability createAvailability(Availability availability) {

@@ -6,7 +6,7 @@ import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.model.Role;
 import com.ficsolution.roster.model.enumModel.EmployeeStatus;
 import com.ficsolution.roster.repository.EmployeeRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.AllArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,16 +16,12 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
+@AllArgsConstructor
 public class EmployeeService {
 
-    @Autowired
-    private EmployeeRepository employeeRepository;
-
-    @Autowired
-    private RoleService roleService;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+    private final EmployeeRepository employeeRepository;
+    private final RoleService roleService;
+    private final PasswordEncoder passwordEncoder;
 
     @Transactional
     public Employee createEmployee(Employee employee) {

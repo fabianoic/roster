@@ -7,7 +7,7 @@ import com.ficsolution.roster.model.Shift;
 import com.ficsolution.roster.model.ShiftSwapRequest;
 import com.ficsolution.roster.model.enumModel.RequestStatus;
 import com.ficsolution.roster.repository.ShiftSwapRequestRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,16 +16,12 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
+@AllArgsConstructor
 public class ShiftSwapRequestService {
 
-    @Autowired
-    private ShiftSwapRequestRepository shiftSwapRequestRepository;
-
-    @Autowired
-    private ShiftService shiftService;
-
-    @Autowired
-    private EmployeeService employeeService;
+    private final ShiftSwapRequestRepository shiftSwapRequestRepository;
+    private final ShiftService shiftService;
+    private final EmployeeService employeeService;
 
     @Transactional
     public ShiftSwapRequest createShiftSwapRequest(ShiftSwapRequest shiftSwapRequest) {

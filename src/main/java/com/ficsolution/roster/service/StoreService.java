@@ -3,7 +3,7 @@ package com.ficsolution.roster.service;
 import com.ficsolution.roster.exception.ObjectNotFoundException;
 import com.ficsolution.roster.model.Store;
 import com.ficsolution.roster.repository.StoreRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,10 +12,10 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
+@AllArgsConstructor
 public class StoreService {
 
-    @Autowired
-    private StoreRepository storeRepository;
+    private final StoreRepository storeRepository;
 
     @Transactional
     public Store createStore(Store store) {
