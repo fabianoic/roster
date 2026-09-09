@@ -40,7 +40,7 @@ public class GlobalExceptionHandler {
                         DefaultMessageSourceResolvable::getDefaultMessage,
                         (a, b) -> a));
 
-        problem.setProperty("erros", fieldErrors);
+        problem.setProperty("errors", fieldErrors);
         return problem;
     }
 
