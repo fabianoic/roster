@@ -76,7 +76,7 @@ public class RoleServiceTest {
     void testUpdateRoleName() {
         // arrange
         Role role = new Role(id, "TEST_ROLE");
-        RoleRequest roleRequest = new RoleRequest("ROLE_TEST");
+        Role roleRequest = new Role(null, "ROLE_TEST");
         when(roleRepository.findById(id)).thenReturn(Optional.of(role));
         when(roleRepository.save(any(Role.class))).thenReturn(role);
 
@@ -98,7 +98,7 @@ public class RoleServiceTest {
         when(roleRepository.save(any(Role.class))).thenReturn(role);
 
         // act & assert
-        assertNotNull(roleService.createRole(roleRequest));
+        assertNotNull(roleService.createRole(role));
         verify(roleRepository, times(1)).save(role);
     }
 

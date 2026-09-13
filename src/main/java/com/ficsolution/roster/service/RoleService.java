@@ -3,7 +3,6 @@ package com.ficsolution.roster.service;
 import com.ficsolution.roster.exception.ObjectNotFoundException;
 import com.ficsolution.roster.model.Role;
 import com.ficsolution.roster.repository.RoleRepository;
-import com.ficsolution.roster.web.dto.role.RoleRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,8 +17,7 @@ public class RoleService {
     private final RoleRepository roleRepository;
 
     @Transactional
-    public Role createRole(RoleRequest roleRequest) {
-        Role role = new Role(null, roleRequest.name());
+    public Role createRole(Role role) {
         return roleRepository.save(role);
     }
 
@@ -34,10 +32,10 @@ public class RoleService {
     }
 
     @Transactional
-    public Role updateRoleName(UUID id, RoleRequest roleRequest) {
-        Role role = retrieveById(id);
-        role.setName(roleRequest.name());
-        return roleRepository.save(role);
+    public Role updateRoleName(UUID id, Role roleRequest) {
+        Role retrievedRole = retrieveById(id);
+        retrievedRole.setName(roleRequest.getName());
+        return roleRepository.save(retrievedRole);
     }
 
     @Transactional

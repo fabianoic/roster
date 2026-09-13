@@ -1,5 +1,6 @@
 package com.ficsolution.roster.web.controller;
 
+import com.ficsolution.roster.model.Role;
 import com.ficsolution.roster.service.RoleService;
 import com.ficsolution.roster.web.dto.role.RoleRequest;
 import com.ficsolution.roster.web.dto.role.RoleResponse;
@@ -21,7 +22,8 @@ public class RoleController {
 
     @PostMapping
     public ResponseEntity<RoleResponse> createRole(@Valid @RequestBody RoleRequest roleRequest) {
-        RoleResponse roleResponse = RoleResponse.from(roleService.createRole(roleRequest));
+        Role role = new Role(null, roleRequest.name());
+        RoleResponse roleResponse = RoleResponse.from(roleService.createRole(role));
         return ResponseEntity.created(URI.create(String.format("/roles/%s", roleResponse.id()))).body(roleResponse);
     }
 
@@ -39,7 +41,7 @@ public class RoleController {
 
     @PutMapping("/{id}")
     public ResponseEntity<RoleResponse> updateRoleName(@PathVariable UUID id, @Valid @RequestBody RoleRequest roleRequest) {
-        RoleResponse roleResponse = RoleResponse.from(roleService.updateRoleName(id, roleRequest));
+        RoleResponse roleResponse = RoleResponse.from(roleService.updateRoleName(id, roleRequest.toEntity()));
         return ResponseEntity.ok(roleResponse);
     }
 

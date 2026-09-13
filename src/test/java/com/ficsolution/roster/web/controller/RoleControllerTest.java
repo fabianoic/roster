@@ -50,7 +50,7 @@ public class RoleControllerTest {
         role.setId(id);
         role.setName("NEW_ROLE");
 
-        given(roleService.createRole(any(RoleRequest.class))).willReturn(role);
+        given(roleService.createRole(any(Role.class))).willReturn(role);
 
         mockMvc.perform(post("/roles")
                         .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_MANAGER")))
