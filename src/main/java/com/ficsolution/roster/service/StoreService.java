@@ -19,6 +19,9 @@ public class StoreService {
 
     @Transactional
     public Store createStore(Store store) {
+        store.setCreatedAt(LocalDateTime.now());
+        store.setUpdatedAt(LocalDateTime.now());
+
         return storeRepository.save(store);
     }
 
@@ -38,7 +41,7 @@ public class StoreService {
 
         store.setName(editStore.getName());
         store.setAddress(editStore.getAddress());
-        store.setUpdatedAt(LocalDateTime.now().plusMinutes(1));
+        store.setUpdatedAt(LocalDateTime.now());
 
         return storeRepository.save(store);
     }
