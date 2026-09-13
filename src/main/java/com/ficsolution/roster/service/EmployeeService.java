@@ -60,15 +60,15 @@ public class EmployeeService {
     }
 
     @Transactional
-    public Employee updateEmployeeInfo(UUID id, UpdateEmployeeRequest updateEmployeeRequest) {
+    public Employee updateEmployeeInfo(UUID id, Employee updateEmployeeRequest) {
         Employee employee = retrieveEmployeeById(id);
 
-        if (!employee.getRole().getId().equals(updateEmployeeRequest.roleId())) {
-            Role newRole = roleService.retrieveById(updateEmployeeRequest.roleId());
+        if (!employee.getRole().getId().equals(updateEmployeeRequest.getRole().getId())) {
+            Role newRole = roleService.retrieveById(updateEmployeeRequest.getRole().getId());
             employee.setRole(newRole);
         }
-        employee.setName(updateEmployeeRequest.name());
-        employee.setEmail(updateEmployeeRequest.email());
+        employee.setName(updateEmployeeRequest.getName());
+        employee.setEmail(updateEmployeeRequest.getEmail());
         employee.setUpdatedAt(LocalDateTime.now());
 
         return employeeRepository.save(employee);

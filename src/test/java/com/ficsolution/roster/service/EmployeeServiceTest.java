@@ -8,7 +8,6 @@ import com.ficsolution.roster.model.enumModel.EmployeeStatus;
 import com.ficsolution.roster.repository.EmployeeRepository;
 import com.ficsolution.roster.web.dto.employee.ChangePasswordRequest;
 import com.ficsolution.roster.web.dto.employee.CreateEmployeeRequest;
-import com.ficsolution.roster.web.dto.employee.UpdateEmployeeRequest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -198,7 +197,11 @@ public class EmployeeServiceTest {
     @Test
     void testUpdateEmployeeInfoNameAndEmail() {
         Role role = new Role(UUID.fromString("df501f58-dc8a-470c-a26d-5786633b6009"), "STAFF");
-        UpdateEmployeeRequest updateEmployeeRequest = new UpdateEmployeeRequest("Oscar", "oscar@gmail.com", role.getId());
+        Employee updateEmployeeRequest = Employee.builder()
+                .name("Oscar")
+                .email("oscar@gmail.com")
+                .role(Role.builder().id(role.getId()).build())
+                .build();
         Employee employee = new Employee(id, "Fabiano Campos",
                 "fabiano.fic@gmail.com",
                 "RANDOMHASHPASSWORD",

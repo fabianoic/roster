@@ -2,11 +2,14 @@ package com.ficsolution.roster.web.controller;
 
 import com.ficsolution.roster.config.JwtConfig;
 import com.ficsolution.roster.config.SecurityConfig;
+import com.ficsolution.roster.exception.ObjectNotFoundException;
 import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.model.Role;
 import com.ficsolution.roster.model.enumModel.EmployeeStatus;
 import com.ficsolution.roster.service.EmployeeService;
+import com.ficsolution.roster.web.dto.employee.ChangePasswordRequest;
 import com.ficsolution.roster.web.dto.employee.CreateEmployeeRequest;
+import com.ficsolution.roster.web.dto.employee.UpdateEmployeeRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -17,13 +20,14 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.util.List;
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(EmployeeController.class)
@@ -38,9 +42,11 @@ public class EmployeeControllerTest {
 
     private final ObjectMapper mapper = new ObjectMapper();
 
+    private final String path = "/employees";
+
     @Test
     void mustReturn401WhenNotAuthorized() throws Exception {
-        mockMvc.perform(get("/employees"))
+        mockMvc.perform(get(path))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -62,7 +68,7 @@ public class EmployeeControllerTest {
         );
         given(employeeService.createEmployee(any(CreateEmployeeRequest.class))).willReturn(employee);
 
-        mockMvc.perform(post("/employees")
+        mockMvc.perform(post(path)
                         .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_MANAGER")))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(createEmployeeRequest)))
@@ -81,7 +87,7 @@ public class EmployeeControllerTest {
                 UUID.randomUUID()
         );
 
-        mockMvc.perform(post("/employees")
+        mockMvc.perform(post(path)
                         .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_MANAGER")))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(createEmployeeRequest)))
@@ -102,11 +108,141 @@ public class EmployeeControllerTest {
 
         given(employeeService.retrieveEmployeeById(id)).willReturn(employee);
 
-        mockMvc.perform(get(String.format("/employees/%s", id))
+        mockMvc.perform(get(String.format("%s/%s", path, id))
                         .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_MANAGER"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(id.toString()))
                 .andExpect(jsonPath("$.name").value(name));
+    }
 
+    @Test
+    void mustRetrieveAllEmployees() throws Exception {
+        Role role = Role.builder().id(UUID.randomUUID()).name("MANAGER").build();
+        List<Employee> employees = List.of(
+                Employee.builder().id(UUID.randomUUID()).name("ONE").email("one@gmail.com").role(role).build(),
+                Employee.builder().id(UUID.randomUUID()).name("TWO").email("two@gmail.com").role(role).build(),
+                Employee.builder().id(UUID.randomUUID()).name("THREE").email("three@gmail.com").role(role).build(),
+                Employee.builder().id(UUID.randomUUID()).name("FOUR").email("four@gmail.com").role(role).build()
+        );
+        given(employeeService.retrieveAllEmployees()).willReturn(employees);
+
+        mockMvc.perform(get(path)
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_MANAGER"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.*", hasSize(4)));
+    }
+
+    @Test
+    void mustRetrieveAnUpdatedEmployee() throws Exception {
+        UUID id = UUID.fromString("ebb6ea55-b853-4504-a381-0f59ad2a1659");
+        UUID roleId = UUID.fromString("9aa2510e-feda-4b1f-bffe-21cc9e180e9f");
+        UpdateEmployeeRequest updateEmployeeRequest =
+                new UpdateEmployeeRequest("Pietro Silva", "pietro@gmail.com", roleId);
+        Employee updatedEmployee = Employee.builder()
+                .id(id)
+                .name(updateEmployeeRequest.name())
+                .email(updateEmployeeRequest.email())
+                .role(Role.builder().id(updateEmployeeRequest.roleId()).build())
+                .build();
+        given(employeeService.updateEmployeeInfo(any(UUID.class), any(Employee.class))).willReturn(updatedEmployee);
+
+        mockMvc.perform(put(String.format("%s/%s", path, id))
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_MANAGER")))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(updateEmployeeRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(id.toString()))
+                .andExpect(jsonPath("$.name").value("Pietro Silva"))
+                .andExpect(jsonPath("$.email").value("pietro@gmail.com"));
+    }
+
+    @Test
+    void mustChangeEmployeeStatus() throws Exception {
+        UUID id = UUID.fromString("ebb6ea55-b853-4504-a381-0f59ad2a1659");
+        Employee employee = Employee.builder()
+                .id(UUID.randomUUID())
+                .name("Fabiano C")
+                .email("fabiano@gmail.com")
+                .role(Role.builder().id(UUID.randomUUID()).build())
+                .status(EmployeeStatus.INACTIVE)
+                .build();
+        given(employeeService.changeEmployeeStatus(id)).willReturn(employee);
+
+        mockMvc.perform(put(String.format("%s/%s/changestatus", path, id))
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_MANAGER"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(EmployeeStatus.INACTIVE.toString()));
+    }
+
+    @Test
+    void mustChangeEmployeePassword() throws Exception {
+        UUID id = UUID.randomUUID();
+        ChangePasswordRequest changePasswordRequest = new ChangePasswordRequest("OLDPASSWORDSAVED", "NEWPASSOWRDTOSAVE");
+        Employee employee = Employee.builder()
+                .id(UUID.randomUUID())
+                .name("Fabiano C")
+                .email("fabiano@gmail.com")
+                .role(Role.builder().id(UUID.randomUUID()).build())
+                .status(EmployeeStatus.ACTIVE)
+                .build();
+
+        given(employeeService.changeEmployeePassword(id, changePasswordRequest)).willReturn(employee);
+
+        mockMvc.perform(put(String.format("%s/%s/changepassword", path, id))
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_MANAGER")))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(changePasswordRequest)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void mustReturn400WhenInvalidPassword() throws Exception {
+        UUID id = UUID.randomUUID();
+        ChangePasswordRequest changePasswordRequest = new ChangePasswordRequest("INVALID", "INVALID");
+        Employee employee = Employee.builder()
+                .id(UUID.randomUUID())
+                .name("Fabiano C")
+                .email("fabiano@gmail.com")
+                .role(Role.builder().id(UUID.randomUUID()).build())
+                .status(EmployeeStatus.ACTIVE)
+                .build();
+
+        given(employeeService.changeEmployeePassword(id, changePasswordRequest)).willReturn(employee);
+
+        mockMvc.perform(put(String.format("%s/%s/changepassword", path, id))
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_MANAGER")))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(changePasswordRequest)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void mustRetrieveEmployeeByEmail() throws Exception {
+        String email = "fabiano@gmail.com";
+        Employee employee = Employee.builder()
+                .id(UUID.randomUUID())
+                .name("Fabiano C")
+                .email(email)
+                .role(Role.builder().id(UUID.randomUUID()).build())
+                .status(EmployeeStatus.ACTIVE)
+                .build();
+        given(employeeService.retrieveEmployeeByEmail(email)).willReturn(employee);
+
+        mockMvc.perform(get(path)
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_MANAGER")))
+                        .param("email", email))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Fabiano C"))
+                .andExpect(jsonPath("$.email").value(email));
+    }
+
+    @Test
+    void mustReturn404WhenEmployeeNotFound() throws Exception {
+        given(employeeService.retrieveEmployeeByEmail("nonexistent@gmail.com")).willThrow(ObjectNotFoundException.class);
+
+        mockMvc.perform(get(path)
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_MANAGER")))
+                        .param("email", "nonexistent@gmail.com"))
+                .andExpect(status().isNotFound());
     }
 }
