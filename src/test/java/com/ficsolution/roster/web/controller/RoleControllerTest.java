@@ -6,13 +6,13 @@ import com.ficsolution.roster.config.SecurityConfig;
 import com.ficsolution.roster.exception.ObjectNotFoundException;
 import com.ficsolution.roster.model.Role;
 import com.ficsolution.roster.service.RoleService;
+import com.ficsolution.roster.util.Util;
 import com.ficsolution.roster.web.dto.role.RoleRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -21,7 +21,6 @@ import java.util.UUID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -53,7 +52,7 @@ public class RoleControllerTest {
         given(roleService.createRole(any(Role.class))).willReturn(role);
 
         mockMvc.perform(post("/roles")
-                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_MANAGER")))
+                        .with(Util.authority)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(new RoleRequest("NEW_ROLE"))))
                 .andExpect(status().isCreated())
@@ -65,7 +64,7 @@ public class RoleControllerTest {
     @Test
     void mustReturn400WhenEmptyName() throws Exception {
         mockMvc.perform(post("/roles")
-                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_MANAGER")))
+                        .with(Util.authority)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(new RoleRequest(""))))
                 .andExpect(status().isBadRequest());
@@ -77,7 +76,7 @@ public class RoleControllerTest {
         given(roleService.retrieveById(id)).willThrow(new ObjectNotFoundException("Role", id.toString()));
 
         mockMvc.perform(get("/roles/{id}", id)
-                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_MANAGER"))))
+                        .with(Util.authority))
                 .andExpect(status().isNotFound());
     }
 
@@ -86,7 +85,7 @@ public class RoleControllerTest {
         UUID id = UUID.randomUUID();
 
         mockMvc.perform(delete("/roles/{id}", id)
-                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_MANAGER"))))
+                        .with(Util.authority))
                 .andExpect(status().isNoContent());
 
         then(roleService).should().deleteRole(id);

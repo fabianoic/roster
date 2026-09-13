@@ -7,6 +7,7 @@ import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.model.Role;
 import com.ficsolution.roster.model.enumModel.EmployeeStatus;
 import com.ficsolution.roster.service.EmployeeService;
+import com.ficsolution.roster.util.Util;
 import com.ficsolution.roster.web.dto.employee.ChangePasswordRequest;
 import com.ficsolution.roster.web.dto.employee.CreateEmployeeRequest;
 import com.ficsolution.roster.web.dto.employee.UpdateEmployeeRequest;
@@ -15,7 +16,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
@@ -26,7 +26,6 @@ import java.util.UUID;
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -69,7 +68,7 @@ public class EmployeeControllerTest {
         given(employeeService.createEmployee(any(CreateEmployeeRequest.class))).willReturn(employee);
 
         mockMvc.perform(post(path)
-                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_MANAGER")))
+                        .with(Util.authority)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(createEmployeeRequest)))
                 .andExpect(status().isCreated())
@@ -88,7 +87,7 @@ public class EmployeeControllerTest {
         );
 
         mockMvc.perform(post(path)
-                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_MANAGER")))
+                        .with(Util.authority)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(createEmployeeRequest)))
                 .andExpect(status().isBadRequest());
@@ -109,7 +108,7 @@ public class EmployeeControllerTest {
         given(employeeService.retrieveEmployeeById(id)).willReturn(employee);
 
         mockMvc.perform(get(String.format("%s/%s", path, id))
-                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_MANAGER"))))
+                        .with(Util.authority))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(id.toString()))
                 .andExpect(jsonPath("$.name").value(name));
@@ -127,7 +126,7 @@ public class EmployeeControllerTest {
         given(employeeService.retrieveAllEmployees()).willReturn(employees);
 
         mockMvc.perform(get(path)
-                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_MANAGER"))))
+                        .with(Util.authority))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.*", hasSize(4)));
     }
@@ -147,7 +146,7 @@ public class EmployeeControllerTest {
         given(employeeService.updateEmployeeInfo(any(UUID.class), any(Employee.class))).willReturn(updatedEmployee);
 
         mockMvc.perform(put(String.format("%s/%s", path, id))
-                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_MANAGER")))
+                        .with(Util.authority)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(updateEmployeeRequest)))
                 .andExpect(status().isOk())
@@ -169,7 +168,7 @@ public class EmployeeControllerTest {
         given(employeeService.changeEmployeeStatus(id)).willReturn(employee);
 
         mockMvc.perform(put(String.format("%s/%s/changestatus", path, id))
-                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_MANAGER"))))
+                        .with(Util.authority))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value(EmployeeStatus.INACTIVE.toString()));
     }
@@ -189,7 +188,7 @@ public class EmployeeControllerTest {
         given(employeeService.changeEmployeePassword(id, changePasswordRequest)).willReturn(employee);
 
         mockMvc.perform(put(String.format("%s/%s/changepassword", path, id))
-                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_MANAGER")))
+                        .with(Util.authority)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(changePasswordRequest)))
                 .andExpect(status().isOk());
@@ -210,7 +209,7 @@ public class EmployeeControllerTest {
         given(employeeService.changeEmployeePassword(id, changePasswordRequest)).willReturn(employee);
 
         mockMvc.perform(put(String.format("%s/%s/changepassword", path, id))
-                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_MANAGER")))
+                        .with(Util.authority)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(changePasswordRequest)))
                 .andExpect(status().isBadRequest());
@@ -229,7 +228,7 @@ public class EmployeeControllerTest {
         given(employeeService.retrieveEmployeeByEmail(email)).willReturn(employee);
 
         mockMvc.perform(get(path)
-                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_MANAGER")))
+                        .with(Util.authority)
                         .param("email", email))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("Fabiano C"))
@@ -241,7 +240,7 @@ public class EmployeeControllerTest {
         given(employeeService.retrieveEmployeeByEmail("nonexistent@gmail.com")).willThrow(ObjectNotFoundException.class);
 
         mockMvc.perform(get(path)
-                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_MANAGER")))
+                        .with(Util.authority)
                         .param("email", "nonexistent@gmail.com"))
                 .andExpect(status().isNotFound());
     }

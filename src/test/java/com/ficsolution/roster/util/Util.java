@@ -1,6 +1,11 @@
 package com.ficsolution.roster.util;
 
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
+
 import java.util.UUID;
+
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 
 public class Util {
 
@@ -12,4 +17,5 @@ public class Util {
     public static final UUID availabilityId = UUID.fromString("f38d39e2-df1c-4df7-86b6-5cb10571376a");
     public static final UUID timeOffRequestId = UUID.fromString("6df1b206-60aa-4183-8f63-3db9f5a04f77");
     public static final UUID shiftSwapRequestId = UUID.fromString("78c2dfad-487d-4405-920d-ef89eff01040");
+    public static final SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor authority = jwt().authorities(new SimpleGrantedAuthority("ROLE_MANAGER"));
 }
