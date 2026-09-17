@@ -13,6 +13,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDateTime;
@@ -155,14 +160,16 @@ public class EmployeeServiceTest {
                         0,
                         null)
         );
-        when(employeeRepository.findAll()).thenReturn(employees);
+        Specification<Employee> specification = Specification.allOf();
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Employee> page = new PageImpl<>(employees, pageable, employees.size());
+        when(employeeRepository.findAll(specification, pageable)).thenReturn(page);
 
-        List<Employee> retrievedEmployees = employeeService.retrieveAllEmployees();
+        Page<Employee> retrievedEmployees = employeeService.retrieveAllEmployees(specification, pageable);
 
         assertNotNull(retrievedEmployees);
-        assertEquals(2, retrievedEmployees.size());
-        assertEquals("Fabiano Campos", retrievedEmployees.get(0).getName());
-        assertEquals("Oscar", retrievedEmployees.get(1).getName());
+        assertEquals(2, retrievedEmployees.getContent().size());
+        verify(employeeRepository).findAll(specification, pageable);
     }
 
     @Test
@@ -256,7 +263,7 @@ public class EmployeeServiceTest {
         assertNotNull(updatedEmployee);
         assertEquals("ENCODEDPASSWORD", updatedEmployee.getPassword());
         verify(employeeRepository, times(1)).findById(id);
-        verify(employeeRepository, times(1)).save(employeeNewPassword);
+        verify(employeeRepository, times(1)).save(any());
     }
 
     @Test

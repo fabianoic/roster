@@ -9,12 +9,14 @@ import com.ficsolution.roster.repository.EmployeeRepository;
 import com.ficsolution.roster.web.dto.employee.ChangePasswordRequest;
 import com.ficsolution.roster.web.dto.employee.CreateEmployeeRequest;
 import lombok.AllArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -50,8 +52,8 @@ public class EmployeeService {
     }
 
     @Transactional(readOnly = true)
-    public List<Employee> retrieveAllEmployees() {
-        return employeeRepository.findAll();
+    public Page<Employee> retrieveAllEmployees(Specification<Employee> specification, Pageable pageable) {
+        return employeeRepository.findAll(specification, pageable);
     }
 
     @Transactional(readOnly = true)

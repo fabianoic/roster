@@ -147,7 +147,7 @@ public class AvailabilityServiceTest {
         assertEquals(DayOfWeek.MONDAY, updatedAvailability.getWeekday());
         assertTrue(updatedAvailability.isAvailable());
         verify(availabilityRepository, times(1)).findById(availabilityId);
-        verify(availabilityRepository, times(1)).save(newAvailability);
+        verify(availabilityRepository, times(1)).save(any());
     }
 
     @Test

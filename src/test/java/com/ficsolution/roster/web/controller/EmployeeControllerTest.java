@@ -15,6 +15,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -123,12 +127,14 @@ public class EmployeeControllerTest {
                 Employee.builder().id(UUID.randomUUID()).name("THREE").email("three@gmail.com").role(role).build(),
                 Employee.builder().id(UUID.randomUUID()).name("FOUR").email("four@gmail.com").role(role).build()
         );
-        given(employeeService.retrieveAllEmployees()).willReturn(employees);
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Employee> page = new PageImpl<>(employees, pageable, employees.size());
+        given(employeeService.retrieveAllEmployees(any(), any())).willReturn(page);
 
         mockMvc.perform(get(path)
                         .with(Util.authority))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.*", hasSize(4)));
+                .andExpect(jsonPath("$.content.*", hasSize(4)));
     }
 
     @Test

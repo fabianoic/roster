@@ -1,19 +1,22 @@
 package com.ficsolution.roster.web.controller;
 
 import com.ficsolution.roster.model.Employee;
-import com.ficsolution.roster.model.Role;
 import com.ficsolution.roster.service.EmployeeService;
+import com.ficsolution.roster.specification.EmployeeSpecification;
+import com.ficsolution.roster.web.dto.EmployeeFilter;
 import com.ficsolution.roster.web.dto.employee.ChangePasswordRequest;
 import com.ficsolution.roster.web.dto.employee.CreateEmployeeRequest;
 import com.ficsolution.roster.web.dto.employee.EmployeeResponse;
 import com.ficsolution.roster.web.dto.employee.UpdateEmployeeRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -41,9 +44,16 @@ public class EmployeeController {
     }
 
     @GetMapping
-    public ResponseEntity<List<EmployeeResponse>> retrieveAllEmployees() {
-        List<EmployeeResponse> employeeResponses = employeeService.retrieveAllEmployees().stream().map(EmployeeResponse::from).toList();
-        return ResponseEntity.ok(employeeResponses);
+    public ResponseEntity<Page<EmployeeResponse>> retrieveAllEmployees(@ModelAttribute EmployeeFilter filter, Pageable pageable) {
+        Specification<Employee> spec = Specification.allOf(
+                EmployeeSpecification.hasRoleId(filter.roleId()),
+                EmployeeSpecification.hasName(filter.name()),
+                EmployeeSpecification.hasEmail(filter.email()),
+                EmployeeSpecification.hasStatus(filter.status())
+        );
+        Page<Employee> employees = employeeService.retrieveAllEmployees(spec, pageable);
+        Page<EmployeeResponse> responses = employees.map(EmployeeResponse::from);
+        return ResponseEntity.ok(responses);
     }
 
     @PutMapping("/{id}")
