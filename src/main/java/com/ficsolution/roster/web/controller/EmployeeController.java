@@ -63,7 +63,7 @@ public class EmployeeController {
         return ResponseEntity.ok(response);
     }
 
-    @PutMapping("/{id}/changestatus")
+    @PutMapping("/{id}/change-status")
     public ResponseEntity<EmployeeResponse> changeEmployeeStatus(@PathVariable UUID id) {
         EmployeeResponse response = EmployeeResponse.from(employeeService.changeEmployeeStatus(id));
         return ResponseEntity.ok(response);
