@@ -8,7 +8,6 @@ import com.ficsolution.roster.model.enumModel.EmployeeStatus;
 import com.ficsolution.roster.repository.EmployeeRepository;
 import com.ficsolution.roster.web.dto.employee.ChangePasswordRequest;
 import com.ficsolution.roster.web.dto.employee.CreateEmployeeRequest;
-import com.ficsolution.roster.web.dto.employee.UpdateEmployeeRequest;
 import lombok.AllArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -25,6 +24,7 @@ public class EmployeeService {
     private final EmployeeRepository employeeRepository;
     private final RoleService roleService;
     private final PasswordEncoder passwordEncoder;
+    private static final int MAX_FAILED_ATTEMPTS = 3;
 
     @Transactional
     public Employee createEmployee(CreateEmployeeRequest createEmployeeRequest) {
@@ -110,7 +110,29 @@ public class EmployeeService {
     }
 
     @Transactional
-    public void updateEmployeeLockInfo(Employee employee) {
-        employeeRepository.save(employee);
+    public void registerLoginSuccess(String email) {
+        Employee employee = employeeRepository
+                .findByEmail(email).orElseThrow(() -> new ObjectNotFoundException("Employee", email));
+
+        if (employee.getFailedAttempt() > 0) {
+            employee.setFailedAttempt(0);
+            employee.setLockTime(null);
+        }
+    }
+
+    @Transactional
+    public void registerLoginFailure(String email) {
+        Employee employee = employeeRepository
+                .findByEmail(email).orElseThrow(() -> new ObjectNotFoundException("Employee", email));
+
+        if (!employee.isAccountLocked()) {
+            int newAttempts = employee.getFailedAttempt() + 1;
+            employee.setFailedAttempt(newAttempts);
+
+            if (newAttempts >= MAX_FAILED_ATTEMPTS) {
+                employee.setAccountLocked(true);
+                employee.setLockTime(LocalDateTime.now());
+            }
+        }
     }
 }
