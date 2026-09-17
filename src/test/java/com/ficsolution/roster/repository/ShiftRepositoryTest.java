@@ -2,11 +2,17 @@ package com.ficsolution.roster.repository;
 
 import com.ficsolution.roster.model.Shift;
 import com.ficsolution.roster.model.enumModel.ShiftStatus;
+import com.ficsolution.roster.specification.ShiftSpecification;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.testcontainers.utility.TestcontainersConfiguration;
 
 import java.time.LocalDate;
@@ -52,10 +58,14 @@ public class ShiftRepositoryTest {
 
     @Test
     void testRetrieveAllShifts() {
-        List<Shift> retrievedShifts = shiftRepository.findAll();
+        Specification<Shift> specification = Specification.allOf(
+                ShiftSpecification.hasEmployeeId(employeeId)
+        );
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Shift> retrievedShifts = shiftRepository.findAll(specification, pageable);
 
         assertNotNull(retrievedShifts);
-        assertEquals(4, retrievedShifts.size());
+        assertEquals(2, retrievedShifts.getTotalElements());
     }
 
     @Test
@@ -64,44 +74,5 @@ public class ShiftRepositoryTest {
 
         assertFalse(retrievedShift.isEmpty());
         assertEquals(shiftId, retrievedShift.get().getId());
-    }
-
-    @Test
-    void testRetrieveShiftBetweenTwoDates() {
-        Shift shift = new Shift(
-                null,
-                employeeRepository.findById(employeeId).get(),
-                storeRepository.findById(storeId).get(),
-                LocalDate.now(),
-                LocalTime.of(8, 0),
-                LocalTime.of(16, 0),
-                ShiftStatus.SCHEDULED,
-                LocalDateTime.now(),
-                LocalDateTime.now());
-        shiftRepository.save(shift);
-        List<Shift> retrievedShifts = shiftRepository.findByShiftDateBetween(LocalDate.now(), LocalDate.now().plusDays(7));
-
-        assertNotNull(retrievedShifts);
-        assertFalse(retrievedShifts.isEmpty());
-    }
-
-    @Test
-    void testRetrieveShiftEmployeeIdandShiftDateBetween() {
-        Shift shift = new Shift(
-                null,
-                employeeRepository.findById(employeeId).get(),
-                storeRepository.findById(storeId).get(),
-                LocalDate.now(),
-                LocalTime.of(8, 0),
-                LocalTime.of(16, 0),
-                ShiftStatus.SCHEDULED,
-                LocalDateTime.now(),
-                LocalDateTime.now());
-        shiftRepository.save(shift);
-        List<Shift> retrievedShifts = shiftRepository.findByEmployeeIdAndShiftDateBetween(employeeId, LocalDate.now(), LocalDate.now().plusDays(7));
-
-        assertNotNull(retrievedShifts);
-        assertFalse(retrievedShifts.isEmpty());
-        assertNotEquals(employeeId, retrievedShifts.getFirst().getId());
     }
 }

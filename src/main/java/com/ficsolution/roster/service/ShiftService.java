@@ -7,6 +7,9 @@ import com.ficsolution.roster.model.Shift;
 import com.ficsolution.roster.model.Store;
 import com.ficsolution.roster.repository.ShiftRepository;
 import lombok.AllArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,18 +47,8 @@ public class ShiftService {
     }
 
     @Transactional(readOnly = true)
-    public List<Shift> retrieveAllShifts() {
-        return shiftRepository.findAll();
-    }
-
-    @Transactional(readOnly = true)
-    public List<Shift> retrieveAllShiftsBetweenDates(LocalDate startDate, LocalDate endDate) {
-        return shiftRepository.findByShiftDateBetween(startDate, endDate);
-    }
-
-    @Transactional(readOnly = true)
-    public List<Shift> retrieveShiftByEmployeeIdAndShiftDateBetween(UUID employeeId, LocalDate startDate, LocalDate endDate) {
-        return shiftRepository.findByEmployeeIdAndShiftDateBetween(employeeId, startDate, endDate);
+    public Page<Shift> retrieveAllShifts(Specification<Shift> specification, Pageable pageable) {
+        return shiftRepository.findAll(specification, pageable);
     }
 
     @Transactional(readOnly = true)

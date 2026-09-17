@@ -14,11 +14,19 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -142,12 +150,18 @@ public class ShiftServiceTest {
                         LocalDateTime.now(),
                         LocalDateTime.now())
         );
-        when(shiftRepository.findAll()).thenReturn(shifts);
+        Specification<Shift> specification = Specification.allOf();
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Shift> page = new PageImpl<>(shifts, pageable, shifts.size());
 
-        List<Shift> retrievedShifts = shiftService.retrieveAllShifts();
+        when(shiftRepository.findAll(specification, pageable)).thenReturn(page);
+
+        Page<Shift> retrievedShifts = shiftService.retrieveAllShifts(specification, pageable);
 
         assertNotNull(retrievedShifts);
-        assertEquals(2, retrievedShifts.size());
+        assertEquals(2, retrievedShifts.getContent().size());
+        assertEquals(2, retrievedShifts.getTotalElements());
+        verify(shiftRepository).findAll(specification, pageable);
     }
 
     @Test
@@ -158,52 +172,6 @@ public class ShiftServiceTest {
 
         assertNotNull(retrievedShift);
         assertEquals(id, retrievedShift.getId());
-    }
-
-    @Test
-    void testRetrieveShiftBetweenDates() {
-        List<Shift> shifts = Arrays.asList(
-                shift,
-                new Shift(
-                        UUID.randomUUID(),
-                        employee,
-                        store,
-                        LocalDate.now().plusDays(7),
-                        LocalTime.of(10, 0),
-                        LocalTime.of(18, 0),
-                        ShiftStatus.SCHEDULED,
-                        LocalDateTime.now(),
-                        LocalDateTime.now())
-        );
-        when(shiftRepository.findByShiftDateBetween(any(LocalDate.class), any(LocalDate.class))).thenReturn(shifts);
-
-        List<Shift> retrievedShifts = shiftService.retrieveAllShiftsBetweenDates(LocalDate.now(), LocalDate.now().plusDays(7));
-
-        assertNotNull(retrievedShifts);
-        assertEquals(2, retrievedShifts.size());
-    }
-
-    @Test
-    void testRetrieveShiftByEmployeeIdAndShiftDateBetween() {
-        List<Shift> shifts = Arrays.asList(
-                shift,
-                new Shift(
-                        UUID.randomUUID(),
-                        employee,
-                        store,
-                        LocalDate.now().plusDays(7),
-                        LocalTime.of(10, 0),
-                        LocalTime.of(18, 0),
-                        ShiftStatus.SCHEDULED,
-                        LocalDateTime.now(),
-                        LocalDateTime.now())
-        );
-        when(shiftRepository.findByEmployeeIdAndShiftDateBetween(any(UUID.class), any(LocalDate.class), any(LocalDate.class))).thenReturn(shifts);
-
-        List<Shift> retrievedShifts = shiftService.retrieveShiftByEmployeeIdAndShiftDateBetween(employee.getId(), LocalDate.now(), LocalDate.now().plusDays(7));
-
-        assertNotNull(retrievedShifts);
-        assertEquals(2, retrievedShifts.size());
     }
 
     @Test
