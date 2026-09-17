@@ -24,11 +24,6 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
 
-  security:
-    user:
-      name: admin
-      password: admin
-
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
