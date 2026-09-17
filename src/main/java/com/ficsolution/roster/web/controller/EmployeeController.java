@@ -48,12 +48,7 @@ public class EmployeeController {
 
     @PutMapping("/{id}")
     public ResponseEntity<EmployeeResponse> updateEmployeeInfo(@PathVariable UUID id, @Valid @RequestBody UpdateEmployeeRequest updateEmployeeRequest) {
-        Employee employee = Employee.builder()
-                .id(id)
-                .name(updateEmployeeRequest.name())
-                .email(updateEmployeeRequest.email())
-                .role(Role.builder().id(updateEmployeeRequest.roleId()).build())
-                .build();
+        Employee employee = updateEmployeeRequest.toEntity();
         EmployeeResponse response = EmployeeResponse.from(employeeService.updateEmployeeInfo(id, employee));
         return ResponseEntity.ok(response);
     }
