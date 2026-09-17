@@ -1,6 +1,7 @@
 package com.ficsolution.roster.model;
 
 import com.ficsolution.roster.model.enumModel.EmployeeStatus;
+import lombok.Getter;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.security.core.GrantedAuthority;
@@ -14,33 +15,37 @@ import java.util.UUID;
 @NullMarked
 public class EmployeePrincipal implements UserDetails {
 
-    private final Employee employee;
+    @Getter
+    private final UUID id;
+    private final String email;
+    private final String passwordHash;
+    @Getter
+    private final String roleName;
+    private final boolean accountLocked;
+    private final EmployeeStatus status;
 
     public EmployeePrincipal(Employee employee) {
-        this.employee = employee;
-    }
-
-    public UUID getId() {
-        return employee.getId();
-    }
-
-    public String getRoleName() {
-        return employee.getRole().getName();
+        this.id = employee.getId();
+        this.email = employee.getEmail();
+        this.passwordHash = employee.getPassword();
+        this.roleName = employee.getRole().getName(); // resolvido AQUI, dentro da transação
+        this.accountLocked = employee.isAccountLocked();
+        this.status = employee.getStatus();
     }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority("ROLE_" + employee.getRole().getName()));
+        return List.of(new SimpleGrantedAuthority("ROLE_" + roleName));
     }
 
     @Override
     public @Nullable String getPassword() {
-        return employee.getPassword();
+        return passwordHash;
     }
 
     @Override
     public String getUsername() {
-        return employee.getEmail();
+        return email;
     }
 
     @Override
@@ -50,7 +55,7 @@ public class EmployeePrincipal implements UserDetails {
 
     @Override
     public boolean isAccountNonLocked() {
-        return !employee.isAccountLocked();
+        return !accountLocked;
     }
 
     @Override
@@ -60,6 +65,6 @@ public class EmployeePrincipal implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return employee.getStatus().equals(EmployeeStatus.ACTIVE);
+        return status.equals(EmployeeStatus.ACTIVE);
     }
 }

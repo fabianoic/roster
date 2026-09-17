@@ -2,6 +2,7 @@ package com.ficsolution.roster.config;
 
 import com.ficsolution.roster.service.EmployeeService;
 import org.springframework.context.event.EventListener;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.authentication.event.AuthenticationFailureBadCredentialsEvent;
 import org.springframework.security.authentication.event.AuthenticationSuccessEvent;
 import org.springframework.stereotype.Component;
@@ -18,11 +19,15 @@ public class AuthenticationEventListener {
 
     @EventListener
     public void onFailure(AuthenticationFailureBadCredentialsEvent event) {
-        employeeService.registerLoginFailure(event.getAuthentication().getName());
+        if (event.getAuthentication() instanceof UsernamePasswordAuthenticationToken) {
+            employeeService.registerLoginFailure(event.getAuthentication().getName());
+        }
     }
 
     @EventListener
     public void onSuccess(AuthenticationSuccessEvent event) {
-        employeeService.registerLoginSuccess(event.getAuthentication().getName());
+        if (event.getAuthentication() instanceof UsernamePasswordAuthenticationToken) {
+            employeeService.registerLoginSuccess(event.getAuthentication().getName());
+        }
     }
 }
