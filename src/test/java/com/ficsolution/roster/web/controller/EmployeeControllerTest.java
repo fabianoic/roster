@@ -173,7 +173,7 @@ public class EmployeeControllerTest {
                 .build();
         given(employeeService.changeEmployeeStatus(id)).willReturn(employee);
 
-        mockMvc.perform(put(String.format("%s/%s/changestatus", path, id))
+        mockMvc.perform(put(String.format("%s/%s/change-status", path, id))
                         .with(Util.authority))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value(EmployeeStatus.INACTIVE.toString()));
