@@ -30,6 +30,9 @@ import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doNothing;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -194,6 +197,57 @@ public class ShiftSwapRequestControllerTest {
                         .with(Util.authority)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(update)))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void mustRetrieveShiftSwapRequestById() throws Exception {
+        ShiftSwapRequest shiftSwapRequest = buildShiftSwapRequest(RequestStatus.PENDING);
+        given(shiftSwapRequestService.retrieveShiftSwapRequestById(Util.shiftSwapRequestId)).willReturn(shiftSwapRequest);
+
+        mockMvc.perform(get(String.format("/swap-requests/%s", Util.shiftSwapRequestId))
+                        .with(Util.authority))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(Util.shiftSwapRequestId.toString()))
+                .andExpect(jsonPath("$.status").value(RequestStatus.PENDING.toString()));
+    }
+
+    @Test
+    void mustReturn404WhenRetrievingNonExistentShiftSwapRequest() throws Exception {
+        given(shiftSwapRequestService.retrieveShiftSwapRequestById(Util.shiftSwapRequestId))
+                .willThrow(ObjectNotFoundException.class);
+
+        mockMvc.perform(get(String.format("/swap-requests/%s", Util.shiftSwapRequestId))
+                        .with(Util.authority))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void mustDeleteShiftSwapRequest() throws Exception {
+        doNothing().when(shiftSwapRequestService).deleteShiftSwapRequest(Util.shiftSwapRequestId);
+
+        mockMvc.perform(delete(String.format("/swap-requests/%s", Util.shiftSwapRequestId))
+                        .with(Util.authority))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void mustReturn404WhenDeletingNonExistentShiftSwapRequest() throws Exception {
+        org.mockito.BDDMockito.willThrow(ObjectNotFoundException.class)
+                .given(shiftSwapRequestService).deleteShiftSwapRequest(Util.shiftSwapRequestId);
+
+        mockMvc.perform(delete(String.format("/swap-requests/%s", Util.shiftSwapRequestId))
+                        .with(Util.authority))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void mustReturn409WhenDeletingNonPendingShiftSwapRequest() throws Exception {
+        org.mockito.BDDMockito.willThrow(ObjectConflictException.class)
+                .given(shiftSwapRequestService).deleteShiftSwapRequest(Util.shiftSwapRequestId);
+
+        mockMvc.perform(delete(String.format("/swap-requests/%s", Util.shiftSwapRequestId))
+                        .with(Util.authority))
                 .andExpect(status().isConflict());
     }
 }

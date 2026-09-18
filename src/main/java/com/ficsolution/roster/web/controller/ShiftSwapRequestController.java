@@ -17,13 +17,13 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ShiftSwapRequestController {
 
-    public final ShiftSwapRequestService shiftSwapRequestService;
+    private final ShiftSwapRequestService shiftSwapRequestService;
 
     @PostMapping("/shifts/{id}/swap-requests")
     public ResponseEntity<ShiftSwapResponse> createSwapShift(@PathVariable UUID id, @Valid @RequestBody CreateSwapRequest swapRequest) {
         ShiftSwapRequest shiftSwapRequest = swapRequest.toEntity();
         shiftSwapRequest = shiftSwapRequestService.createShiftSwapRequest(shiftSwapRequest);
-        return ResponseEntity.created(URI.create("/shifts/".concat(id.toString()))).body(ShiftSwapResponse.from(shiftSwapRequest));
+        return ResponseEntity.created(URI.create("/swap-requests/".concat(shiftSwapRequest.getId().toString()))).body(ShiftSwapResponse.from(shiftSwapRequest));
     }
 
     @PutMapping("/swap-requests/{id}")
@@ -32,5 +32,15 @@ public class ShiftSwapRequestController {
         return ResponseEntity.ok(ShiftSwapResponse.from(shiftSwapRequest));
     }
 
+    @GetMapping("/swap-requests/{id}")
+    public ResponseEntity<ShiftSwapResponse> retrieveShiftSwapRequestById(@PathVariable UUID id) {
+        ShiftSwapRequest shiftSwapRequest = shiftSwapRequestService.retrieveShiftSwapRequestById(id);
+        return ResponseEntity.ok(ShiftSwapResponse.from(shiftSwapRequest));
+    }
 
+    @DeleteMapping("/swap-requests/{id}")
+    public ResponseEntity<Void> deleteShiftSwapRequest(@PathVariable UUID id) {
+        shiftSwapRequestService.deleteShiftSwapRequest(id);
+        return ResponseEntity.noContent().build();
+    }
 }
