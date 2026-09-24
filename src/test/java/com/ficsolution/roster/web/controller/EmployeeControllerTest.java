@@ -250,4 +250,148 @@ public class EmployeeControllerTest {
                         .param("email", "nonexistent@gmail.com"))
                 .andExpect(status().isNotFound());
     }
+
+    @Test
+    void mustReturn403WhenStaffCreatesEmployee() throws Exception {
+        CreateEmployeeRequest createEmployeeRequest = new CreateEmployeeRequest(
+                "Fabiano", "fabiano.fic@gmail.com", "NEWPASSWORDHASH", UUID.randomUUID());
+
+        mockMvc.perform(post(path)
+                        .with(Util.staffAuthority)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(createEmployeeRequest)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void mustReturn403WhenStaffUpdatesEmployee() throws Exception {
+        UpdateEmployeeRequest updateEmployeeRequest = new UpdateEmployeeRequest("Pietro Silva", "pietro@gmail.com", Util.roleId);
+
+        mockMvc.perform(put(String.format("%s/%s", path, Util.employeeId))
+                        .with(Util.staffAuthority)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(updateEmployeeRequest)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void mustReturn403WhenStaffChangesEmployeeStatus() throws Exception {
+        mockMvc.perform(put(String.format("%s/%s/change-status", path, Util.employeeId))
+                        .with(Util.staffAuthority))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void mustReturn403WhenStaffListsAllEmployees() throws Exception {
+        mockMvc.perform(get(path)
+                        .with(Util.staffAuthority))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void mustReturn403WhenStaffSearchesEmployeeByEmail() throws Exception {
+        mockMvc.perform(get(path)
+                        .with(Util.staffAuthority)
+                        .param("email", "fabiano@gmail.com"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void mustAllowStaffToRetrieveOwnProfileById() throws Exception {
+        Employee employee = Employee.builder()
+                .id(Util.employeeId)
+                .name("Fabiano C")
+                .email("fabiano@gmail.com")
+                .role(Role.builder().id(UUID.randomUUID()).build())
+                .status(EmployeeStatus.ACTIVE)
+                .build();
+        given(employeeService.retrieveEmployeeById(Util.employeeId)).willReturn(employee);
+
+        mockMvc.perform(get(String.format("%s/%s", path, Util.employeeId))
+                        .with(Util.staffAuthority))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void mustReturn403WhenStaffRetrievesAnotherEmployeeProfileById() throws Exception {
+        mockMvc.perform(get(String.format("%s/%s", path, Util.employeeId))
+                        .with(Util.staffOtherAuthority))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void mustAllowSupervisorToRetrieveAnyEmployeeProfileById() throws Exception {
+        Employee employee = Employee.builder()
+                .id(Util.employeeId)
+                .name("Fabiano C")
+                .email("fabiano@gmail.com")
+                .role(Role.builder().id(UUID.randomUUID()).build())
+                .status(EmployeeStatus.ACTIVE)
+                .build();
+        given(employeeService.retrieveEmployeeById(Util.employeeId)).willReturn(employee);
+
+        mockMvc.perform(get(String.format("%s/%s", path, Util.employeeId))
+                        .with(Util.supervisorAuthority))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void mustAllowStaffToChangeOwnPassword() throws Exception {
+        ChangePasswordRequest changePasswordRequest = new ChangePasswordRequest("OLDPASSWORDSAVED", "NEWPASSOWRDTOSAVE");
+        Employee employee = Employee.builder()
+                .id(Util.employeeId)
+                .name("Fabiano C")
+                .email("fabiano@gmail.com")
+                .role(Role.builder().id(UUID.randomUUID()).build())
+                .status(EmployeeStatus.ACTIVE)
+                .build();
+        given(employeeService.changeEmployeePassword(Util.employeeId, changePasswordRequest)).willReturn(employee);
+
+        mockMvc.perform(put(String.format("%s/%s/changepassword", path, Util.employeeId))
+                        .with(Util.staffAuthority)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(changePasswordRequest)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void mustReturn403WhenStaffChangesAnotherEmployeePassword() throws Exception {
+        ChangePasswordRequest changePasswordRequest = new ChangePasswordRequest("OLDPASSWORDSAVED", "NEWPASSOWRDTOSAVE");
+
+        mockMvc.perform(put(String.format("%s/%s/changepassword", path, Util.employeeId))
+                        .with(Util.staffOtherAuthority)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(changePasswordRequest)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void mustReturn403WhenSupervisorChangesAnotherEmployeePassword() throws Exception {
+        ChangePasswordRequest changePasswordRequest = new ChangePasswordRequest("OLDPASSWORDSAVED", "NEWPASSOWRDTOSAVE");
+
+        mockMvc.perform(put(String.format("%s/%s/changepassword", path, Util.employee1Id))
+                        .with(Util.supervisorAuthority)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(changePasswordRequest)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void mustAllowManagerToChangeAnotherEmployeePassword() throws Exception {
+        ChangePasswordRequest changePasswordRequest = new ChangePasswordRequest("OLDPASSWORDSAVED", "NEWPASSOWRDTOSAVE");
+        Employee employee = Employee.builder()
+                .id(Util.employee1Id)
+                .name("Pietro Silva")
+                .email("pietro@gmail.com")
+                .role(Role.builder().id(UUID.randomUUID()).build())
+                .status(EmployeeStatus.ACTIVE)
+                .build();
+        given(employeeService.changeEmployeePassword(Util.employee1Id, changePasswordRequest)).willReturn(employee);
+
+        mockMvc.perform(put(String.format("%s/%s/changepassword", path, Util.employee1Id))
+                        .with(Util.authority)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(changePasswordRequest)))
+                .andExpect(status().isOk());
+    }
 }

@@ -1,6 +1,7 @@
 package com.ficsolution.roster.web.controller;
 
 import com.ficsolution.roster.model.Employee;
+import com.ficsolution.roster.security.SecurityUtil;
 import com.ficsolution.roster.service.EmployeeService;
 import com.ficsolution.roster.specification.EmployeeSpecification;
 import com.ficsolution.roster.web.dto.EmployeeFilter;
@@ -35,6 +36,7 @@ public class EmployeeController {
 
     @GetMapping("/{id}")
     public ResponseEntity<EmployeeResponse> retrieveEmployeeById(@PathVariable UUID id) {
+        SecurityUtil.requireOwnershipOrRole(id, "MANAGER", "SUPERVISOR");
         return ResponseEntity.ok(EmployeeResponse.from(employeeService.retrieveEmployeeById(id)));
     }
 
@@ -71,6 +73,7 @@ public class EmployeeController {
 
     @PutMapping("/{id}/change-password")
     public ResponseEntity<EmployeeResponse> changeEmployeePassword(@PathVariable UUID id, @Valid @RequestBody ChangePasswordRequest changePasswordRequest) {
+        SecurityUtil.requireOwnershipOrRole(id, "MANAGER");
         return ResponseEntity.ok(EmployeeResponse.from(employeeService.changeEmployeePassword(id, changePasswordRequest)));
     }
 

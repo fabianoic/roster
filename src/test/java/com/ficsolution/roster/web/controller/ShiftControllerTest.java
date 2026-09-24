@@ -220,4 +220,50 @@ public class ShiftControllerTest {
                 .andExpect(jsonPath("$.status").value(ShiftStatus.COMPLETED.toString()));
 
     }
+
+    @Test
+    void mustReturn403WhenStaffCreatesShift() throws Exception {
+        CreateShiftRequest request = new CreateShiftRequest(
+                UUID.randomUUID(), UUID.randomUUID(), LocalDate.now(), LocalTime.of(8, 0), LocalTime.of(16, 0));
+
+        mockMvc.perform(post(path)
+                        .with(Util.staffAuthority)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void mustReturn403WhenStaffUpdatesShift() throws Exception {
+        UUID id = UUID.randomUUID();
+        UpdateShiftRequest update = new UpdateShiftRequest(
+                UUID.randomUUID(), ShiftStatus.COMPLETED, LocalTime.of(10, 0), LocalTime.of(18, 0));
+
+        mockMvc.perform(put(String.format("%s/%s", path, id))
+                        .with(Util.staffAuthority)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(update)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void mustAllowStaffToRetrieveAllShifts() throws Exception {
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Shift> page = new PageImpl<>(List.of(shift), pageable, 1);
+        given(shiftService.retrieveAllShifts(any(), any())).willReturn(page);
+
+        mockMvc.perform(get(path)
+                        .with(Util.staffAuthority))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void mustAllowStaffToRetrieveShiftById() throws Exception {
+        UUID id = UUID.randomUUID();
+        given(shiftService.retrieveShiftById(any(UUID.class))).willReturn(shift);
+
+        mockMvc.perform(get(String.format("%s/%s", path, id))
+                        .with(Util.staffAuthority))
+                .andExpect(status().isOk());
+    }
 }

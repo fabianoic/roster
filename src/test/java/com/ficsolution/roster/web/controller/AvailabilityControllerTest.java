@@ -186,6 +186,7 @@ public class AvailabilityControllerTest {
                 LocalTime.of(0, 0),
                 LocalTime.of(23, 59)
         );
+        given(availabilityService.retrieveAvailabilityById(id)).willReturn(buildAvailability(id, DayOfWeek.THURSDAY, false));
         given(availabilityService.updateAvailability(any(UUID.class), any(Availability.class))).willReturn(updated);
 
         mockMvc.perform(put(String.format("%s/%s", path, id))
@@ -226,7 +227,7 @@ public class AvailabilityControllerTest {
                 LocalTime.of(0, 0),
                 LocalTime.of(23, 59)
         );
-        given(availabilityService.updateAvailability(any(UUID.class), any(Availability.class)))
+        given(availabilityService.retrieveAvailabilityById(id))
                 .willThrow(ObjectNotFoundException.class);
 
         mockMvc.perform(put(String.format("%s/%s", path, id))
@@ -239,6 +240,7 @@ public class AvailabilityControllerTest {
     @Test
     void mustDeleteAvailability() throws Exception {
         UUID id = UUID.randomUUID();
+        given(availabilityService.retrieveAvailabilityById(id)).willReturn(buildAvailability(id, DayOfWeek.THURSDAY, false));
         doNothing().when(availabilityService).deleteAvailability(id);
 
         mockMvc.perform(delete(String.format("%s/%s", path, id))
@@ -249,11 +251,169 @@ public class AvailabilityControllerTest {
     @Test
     void mustReturn404WhenDeletingNonExistentAvailability() throws Exception {
         UUID id = UUID.randomUUID();
-        org.mockito.BDDMockito.willThrow(ObjectNotFoundException.class)
-                .given(availabilityService).deleteAvailability(id);
+        given(availabilityService.retrieveAvailabilityById(id)).willThrow(ObjectNotFoundException.class);
 
         mockMvc.perform(delete(String.format("%s/%s", path, id))
                         .with(Util.authority))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void mustReturn403WhenStaffListsAllAvailabilities() throws Exception {
+        mockMvc.perform(get(path)
+                        .with(Util.staffAuthority))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void mustAllowStaffToListOwnAvailabilitiesByEmployeeId() throws Exception {
+        given(availabilityService.retrieveAllAvailabilityByEmployeeId(Util.employeeId))
+                .willReturn(List.of(buildAvailability(UUID.randomUUID(), DayOfWeek.THURSDAY, false)));
+
+        mockMvc.perform(get(path)
+                        .with(Util.staffAuthority)
+                        .param("employeeId", Util.employeeId.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.*", hasSize(1)));
+    }
+
+    @Test
+    void mustReturn403WhenStaffListsAvailabilitiesOfAnotherEmployee() throws Exception {
+        mockMvc.perform(get(path)
+                        .with(Util.staffOtherAuthority)
+                        .param("employeeId", Util.employeeId.toString()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void mustAllowSupervisorToListAvailabilitiesOfAnyEmployee() throws Exception {
+        given(availabilityService.retrieveAllAvailabilityByEmployeeId(Util.employeeId))
+                .willReturn(List.of(buildAvailability(UUID.randomUUID(), DayOfWeek.THURSDAY, false)));
+
+        mockMvc.perform(get(path)
+                        .with(Util.supervisorAuthority)
+                        .param("employeeId", Util.employeeId.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.*", hasSize(1)));
+    }
+
+    @Test
+    void mustAllowStaffToCreateOwnAvailability() throws Exception {
+        UUID id = UUID.randomUUID();
+        CreateAvailabilityRequest request = new CreateAvailabilityRequest(
+                Util.employeeId,
+                DayOfWeek.THURSDAY,
+                false,
+                "test reason for tests.",
+                LocalTime.of(0, 0),
+                LocalTime.of(23, 59)
+        );
+        given(availabilityService.createAvailability(any(Availability.class)))
+                .willReturn(buildAvailability(id, DayOfWeek.THURSDAY, false));
+
+        mockMvc.perform(post(path)
+                        .with(Util.staffAuthority)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void mustReturn403WhenStaffCreatesAvailabilityForAnotherEmployee() throws Exception {
+        CreateAvailabilityRequest request = new CreateAvailabilityRequest(
+                Util.employeeId,
+                DayOfWeek.THURSDAY,
+                false,
+                "test reason for tests.",
+                LocalTime.of(0, 0),
+                LocalTime.of(23, 59)
+        );
+
+        mockMvc.perform(post(path)
+                        .with(Util.staffOtherAuthority)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void mustAllowStaffToRetrieveOwnAvailabilityById() throws Exception {
+        UUID id = UUID.randomUUID();
+        given(availabilityService.retrieveAvailabilityById(id)).willReturn(buildAvailability(id, DayOfWeek.THURSDAY, false));
+
+        mockMvc.perform(get(String.format("%s/%s", path, id))
+                        .with(Util.staffAuthority))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void mustReturn403WhenStaffRetrievesAnotherEmployeeAvailabilityById() throws Exception {
+        UUID id = UUID.randomUUID();
+        given(availabilityService.retrieveAvailabilityById(id)).willReturn(buildAvailability(id, DayOfWeek.THURSDAY, false));
+
+        mockMvc.perform(get(String.format("%s/%s", path, id))
+                        .with(Util.staffOtherAuthority))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void mustAllowStaffToUpdateOwnAvailability() throws Exception {
+        UUID id = UUID.randomUUID();
+        UpdateAvailabilityRequest request = new UpdateAvailabilityRequest(
+                DayOfWeek.MONDAY,
+                true,
+                "test reason for tests.",
+                LocalTime.of(0, 0),
+                LocalTime.of(23, 59)
+        );
+        given(availabilityService.retrieveAvailabilityById(id)).willReturn(buildAvailability(id, DayOfWeek.THURSDAY, false));
+        given(availabilityService.updateAvailability(any(UUID.class), any(Availability.class)))
+                .willReturn(buildAvailability(id, DayOfWeek.MONDAY, true));
+
+        mockMvc.perform(put(String.format("%s/%s", path, id))
+                        .with(Util.staffAuthority)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void mustReturn403WhenStaffUpdatesAnotherEmployeeAvailability() throws Exception {
+        UUID id = UUID.randomUUID();
+        UpdateAvailabilityRequest request = new UpdateAvailabilityRequest(
+                DayOfWeek.MONDAY,
+                true,
+                "test reason for tests.",
+                LocalTime.of(0, 0),
+                LocalTime.of(23, 59)
+        );
+        given(availabilityService.retrieveAvailabilityById(id)).willReturn(buildAvailability(id, DayOfWeek.THURSDAY, false));
+
+        mockMvc.perform(put(String.format("%s/%s", path, id))
+                        .with(Util.staffOtherAuthority)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void mustAllowStaffToDeleteOwnAvailability() throws Exception {
+        UUID id = UUID.randomUUID();
+        given(availabilityService.retrieveAvailabilityById(id)).willReturn(buildAvailability(id, DayOfWeek.THURSDAY, false));
+        doNothing().when(availabilityService).deleteAvailability(id);
+
+        mockMvc.perform(delete(String.format("%s/%s", path, id))
+                        .with(Util.staffAuthority))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void mustReturn403WhenStaffDeletesAnotherEmployeeAvailability() throws Exception {
+        UUID id = UUID.randomUUID();
+        given(availabilityService.retrieveAvailabilityById(id)).willReturn(buildAvailability(id, DayOfWeek.THURSDAY, false));
+
+        mockMvc.perform(delete(String.format("%s/%s", path, id))
+                        .with(Util.staffOtherAuthority))
+                .andExpect(status().isForbidden());
     }
 }

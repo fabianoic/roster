@@ -90,4 +90,20 @@ public class RoleControllerTest {
 
         then(roleService).should().deleteRole(id);
     }
+
+    @Test
+    void mustReturn403WhenStaffListsRoles() throws Exception {
+        mockMvc.perform(get("/roles")
+                        .with(Util.staffAuthority))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void mustReturn403WhenSupervisorCreatesRole() throws Exception {
+        mockMvc.perform(post("/roles")
+                        .with(Util.supervisorAuthority)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(new RoleRequest("NEW_ROLE"))))
+                .andExpect(status().isForbidden());
+    }
 }
