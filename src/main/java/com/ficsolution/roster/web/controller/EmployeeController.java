@@ -69,7 +69,7 @@ public class EmployeeController {
         return ResponseEntity.ok(response);
     }
 
-    @PutMapping("/{id}/changepassword")
+    @PutMapping("/{id}/change-password")
     public ResponseEntity<EmployeeResponse> changeEmployeePassword(@PathVariable UUID id, @Valid @RequestBody ChangePasswordRequest changePasswordRequest) {
         return ResponseEntity.ok(EmployeeResponse.from(employeeService.changeEmployeePassword(id, changePasswordRequest)));
     }
