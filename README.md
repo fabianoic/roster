@@ -207,7 +207,7 @@ SecurityUtil.requireOwnershipOrPermission(employeeId, Permissions.TIME_OFF_ANY);
 
 ### Use case diagram
 
-![Roster use case diagram](D:\Documents\Projectos\Spring%20Boot\roster_user_case_v4.png)
+![Roster use case diagram](https://github.com/fabianoic/roster/blob/fba4672ba5e348cfc76b1697ce31f0e4f860adf9/roster_user_case.png)
 
 `Manager` is modeled as a specialization of `Any User` (UML actor generalization) — it inherits every self-service use case (checking a shift, requesting a swap, declaring availability, requesting time off) and adds the administrative ones (managing roles/permissions, stores, employees). This mirrors the permission model above: a `MANAGER` role is simply seeded with every permission a `STAFF` has, plus the administrative ones — the diagram and the `role_permission` table describe the same boundary from two angles.
 
