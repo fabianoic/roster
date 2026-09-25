@@ -1,7 +1,7 @@
 package com.ficsolution.roster.model;
 
-import com.ficsolution.roster.model.enumModel.RequestStatus;
-import com.ficsolution.roster.model.enumModel.TimeOffRequestType;
+import com.ficsolution.roster.model.enums.RequestStatus;
+import com.ficsolution.roster.model.enums.TimeOffRequestType;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;

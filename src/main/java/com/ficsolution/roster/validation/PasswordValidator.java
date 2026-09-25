@@ -1,6 +1,5 @@
-package com.ficsolution.roster.validator;
+package com.ficsolution.roster.validation;
 
-import com.ficsolution.roster.annotation.ValidPassword;
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 

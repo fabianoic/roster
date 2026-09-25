@@ -1,7 +1,7 @@
 package com.ficsolution.roster.web.dto.shift;
 
 import com.ficsolution.roster.model.ShiftSwapRequest;
-import com.ficsolution.roster.model.enumModel.RequestStatus;
+import com.ficsolution.roster.model.enums.RequestStatus;
 
 import java.util.UUID;
 

@@ -5,7 +5,7 @@ import com.ficsolution.roster.config.SecurityConfig;
 import com.ficsolution.roster.exception.ObjectNotFoundException;
 import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.model.Role;
-import com.ficsolution.roster.model.enumModel.EmployeeStatus;
+import com.ficsolution.roster.model.enums.EmployeeStatus;
 import com.ficsolution.roster.service.EmployeeService;
 import com.ficsolution.roster.util.Util;
 import com.ficsolution.roster.web.dto.employee.ChangePasswordRequest;

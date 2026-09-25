@@ -1,6 +1,6 @@
 package com.ficsolution.roster.model;
 
-import com.ficsolution.roster.model.enumModel.ShiftStatus;
+import com.ficsolution.roster.model.enums.ShiftStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;

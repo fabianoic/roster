@@ -1,7 +1,7 @@
 package com.ficsolution.roster.specification;
 
 import com.ficsolution.roster.model.Employee;
-import com.ficsolution.roster.model.enumModel.EmployeeStatus;
+import com.ficsolution.roster.model.enums.EmployeeStatus;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.util.UUID;

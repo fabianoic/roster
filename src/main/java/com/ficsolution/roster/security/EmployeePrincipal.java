@@ -1,6 +1,8 @@
-package com.ficsolution.roster.model;
+package com.ficsolution.roster.security;
 
-import com.ficsolution.roster.model.enumModel.EmployeeStatus;
+import com.ficsolution.roster.model.Employee;
+import com.ficsolution.roster.model.Permission;
+import com.ficsolution.roster.model.enums.EmployeeStatus;
 import lombok.Getter;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;

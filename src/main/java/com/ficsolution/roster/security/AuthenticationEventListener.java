@@ -1,4 +1,4 @@
-package com.ficsolution.roster.config;
+package com.ficsolution.roster.security;
 
 import com.ficsolution.roster.service.EmployeeService;
 import org.springframework.context.event.EventListener;

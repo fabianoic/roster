@@ -1,6 +1,6 @@
 package com.ficsolution.roster.web.dto.shift;
 
-import com.ficsolution.roster.model.enumModel.RequestStatus;
+import com.ficsolution.roster.model.enums.RequestStatus;
 import jakarta.validation.constraints.NotNull;
 
 public record UpdateShiftSwap(

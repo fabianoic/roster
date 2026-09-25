@@ -5,7 +5,7 @@ import com.ficsolution.roster.exception.ObjectNotFoundException;
 import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.model.Shift;
 import com.ficsolution.roster.model.ShiftSwapRequest;
-import com.ficsolution.roster.model.enumModel.RequestStatus;
+import com.ficsolution.roster.model.enums.RequestStatus;
 import com.ficsolution.roster.repository.ShiftSwapRequestRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

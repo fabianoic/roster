@@ -6,8 +6,8 @@ import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateDeserializer;
 import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateSerializer;
 import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.model.TimeOffRequest;
-import com.ficsolution.roster.model.enumModel.RequestStatus;
-import com.ficsolution.roster.model.enumModel.TimeOffRequestType;
+import com.ficsolution.roster.model.enums.RequestStatus;
+import com.ficsolution.roster.model.enums.TimeOffRequestType;
 import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDate;

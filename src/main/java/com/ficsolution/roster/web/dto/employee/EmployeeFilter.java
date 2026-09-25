@@ -1,6 +1,6 @@
-package com.ficsolution.roster.web.dto;
+package com.ficsolution.roster.web.dto.employee;
 
-import com.ficsolution.roster.model.enumModel.EmployeeStatus;
+import com.ficsolution.roster.model.enums.EmployeeStatus;
 
 import java.util.UUID;
 

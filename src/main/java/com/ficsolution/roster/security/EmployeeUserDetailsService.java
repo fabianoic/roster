@@ -1,8 +1,7 @@
-package com.ficsolution.roster.service;
+package com.ficsolution.roster.security;
 
 import com.ficsolution.roster.exception.ObjectNotFoundException;
 import com.ficsolution.roster.model.Employee;
-import com.ficsolution.roster.model.EmployeePrincipal;
 import com.ficsolution.roster.repository.EmployeeRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -12,7 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-public class EmployeeUserDetailService implements UserDetailsService {
+public class EmployeeUserDetailsService implements UserDetailsService {
 
     private final EmployeeRepository employeeRepository;
 

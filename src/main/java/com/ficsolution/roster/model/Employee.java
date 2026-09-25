@@ -1,6 +1,6 @@
 package com.ficsolution.roster.model;
 
-import com.ficsolution.roster.model.enumModel.EmployeeStatus;
+import com.ficsolution.roster.model.enums.EmployeeStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import lombok.*;

@@ -1,6 +1,6 @@
 package com.ficsolution.roster.web.controller;
 
-import com.ficsolution.roster.model.EmployeePrincipal;
+import com.ficsolution.roster.security.EmployeePrincipal;
 import com.ficsolution.roster.web.dto.auth.LoginRequest;
 import com.ficsolution.roster.web.dto.auth.LoginResponse;
 import jakarta.validation.Valid;
