@@ -5,13 +5,14 @@ import com.ficsolution.roster.exception.ObjectNotFoundException;
 import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.model.Shift;
 import com.ficsolution.roster.model.ShiftSwapRequest;
-import com.ficsolution.roster.model.enumModel.RequestStatus;
+import com.ficsolution.roster.model.enums.RequestStatus;
 import com.ficsolution.roster.repository.ShiftSwapRequestRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -155,6 +156,28 @@ public class ShiftSwapRequestServiceTest {
         verify(shiftSwapRequestRepository, times(1)).findById(shiftSwapRequestId);
         verify(shiftService, times(0)).swapShiftEmployee(shiftId, employeeId);
         verify(shiftSwapRequestRepository, times(0)).save(shiftSwapRequest);
+    }
+
+    @Test
+    void testShiftSwapRequestChangeStatus_notTarget() {
+        Shift shift = new Shift();
+        shift.setId(shiftId);
+        Employee requester = new Employee();
+        requester.setId(employee1Id);
+        shift.setEmployee(requester);
+        Employee target = new Employee();
+        target.setId(employeeId);
+        ShiftSwapRequest shiftSwapRequest = new ShiftSwapRequest();
+        shiftSwapRequest.setShift(shift);
+        shiftSwapRequest.setRequester(requester);
+        shiftSwapRequest.setTarget(target);
+        shiftSwapRequest.setStatus(RequestStatus.PENDING);
+        when(shiftSwapRequestRepository.findById(shiftSwapRequestId)).thenReturn(Optional.of(shiftSwapRequest));
+
+        // logged employee is the requester, not the target
+        assertThrows(AccessDeniedException.class, () -> shiftSwapRequestService.changeStatus(shiftSwapRequestId, employee1Id, RequestStatus.APPROVED));
+        verify(shiftService, times(0)).swapShiftEmployee(any(UUID.class), any(UUID.class));
+        verify(shiftSwapRequestRepository, times(0)).save(any(ShiftSwapRequest.class));
     }
 
     @Test

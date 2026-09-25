@@ -1,7 +1,9 @@
 package com.ficsolution.roster.service;
 
 import com.ficsolution.roster.exception.ObjectNotFoundException;
+import com.ficsolution.roster.model.Permission;
 import com.ficsolution.roster.model.Role;
+import com.ficsolution.roster.repository.PermissionRepository;
 import com.ficsolution.roster.repository.RoleRepository;
 import com.ficsolution.roster.web.dto.role.RoleRequest;
 import org.junit.jupiter.api.Test;
@@ -13,6 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -26,6 +29,9 @@ public class RoleServiceTest {
 
     @Mock
     private RoleRepository roleRepository;
+
+    @Mock
+    private PermissionRepository permissionRepository;
 
     private final UUID id = UUID.randomUUID();
 
@@ -114,6 +120,58 @@ public class RoleServiceTest {
         // assert
         verify(roleRepository).delete(role);
         verify(roleRepository).findById(id);
+    }
+
+    @Test
+    void testRetrievePermissionsSortedByName() {
+        // arrange
+        Role role = new Role(id, "TEST_ROLE");
+        role.getPermissions().add(new Permission(UUID.randomUUID(), "SHIFT_WRITE", null));
+        role.getPermissions().add(new Permission(UUID.randomUUID(), "SHIFT_READ", null));
+        when(roleRepository.findById(id)).thenReturn(Optional.of(role));
+
+        // act
+        List<Permission> permissions = roleService.retrievePermissions(id);
+
+        // assert
+        assertEquals(List.of("SHIFT_READ", "SHIFT_WRITE"), permissions.stream().map(Permission::getName).toList());
+    }
+
+    @Test
+    void testReplacePermissions() {
+        // arrange
+        Role role = new Role(id, "TEST_ROLE");
+        role.getPermissions().add(new Permission(UUID.randomUUID(), "STORE_WRITE", null));
+        Set<String> names = Set.of("SHIFT_READ", "SHIFT_WRITE");
+        when(roleRepository.findById(id)).thenReturn(Optional.of(role));
+        when(permissionRepository.findByNameIn(names)).thenReturn(List.of(
+                new Permission(UUID.randomUUID(), "SHIFT_READ", null),
+                new Permission(UUID.randomUUID(), "SHIFT_WRITE", null)));
+        when(roleRepository.save(role)).thenReturn(role);
+
+        // act
+        List<Permission> permissions = roleService.replacePermissions(id, names);
+
+        // assert
+        assertEquals(List.of("SHIFT_READ", "SHIFT_WRITE"), permissions.stream().map(Permission::getName).toList());
+        assertEquals(2, role.getPermissions().size());
+        verify(roleRepository).save(role);
+    }
+
+    @Test
+    void testReplacePermissions_UnknownPermission() {
+        // arrange
+        Role role = new Role(id, "TEST_ROLE");
+        Set<String> names = Set.of("SHIFT_READ", "UNKNOWN");
+        when(roleRepository.findById(id)).thenReturn(Optional.of(role));
+        when(permissionRepository.findByNameIn(names)).thenReturn(List.of(
+                new Permission(UUID.randomUUID(), "SHIFT_READ", null)));
+
+        // act & assert
+        ObjectNotFoundException exception = assertThrows(ObjectNotFoundException.class,
+                () -> roleService.replacePermissions(id, names));
+        assertEquals("UNKNOWN", exception.getIdentifier());
+        verify(roleRepository, never()).save(any(Role.class));
     }
 
 }

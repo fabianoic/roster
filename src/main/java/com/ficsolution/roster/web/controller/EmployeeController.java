@@ -1,9 +1,11 @@
 package com.ficsolution.roster.web.controller;
 
 import com.ficsolution.roster.model.Employee;
+import com.ficsolution.roster.security.Permissions;
+import com.ficsolution.roster.security.SecurityUtil;
 import com.ficsolution.roster.service.EmployeeService;
-import com.ficsolution.roster.specification.EmployeeSpecification;
-import com.ficsolution.roster.web.dto.EmployeeFilter;
+import com.ficsolution.roster.repository.specification.EmployeeSpecification;
+import com.ficsolution.roster.web.dto.employee.EmployeeFilter;
 import com.ficsolution.roster.web.dto.employee.ChangePasswordRequest;
 import com.ficsolution.roster.web.dto.employee.CreateEmployeeRequest;
 import com.ficsolution.roster.web.dto.employee.EmployeeResponse;
@@ -35,6 +37,7 @@ public class EmployeeController {
 
     @GetMapping("/{id}")
     public ResponseEntity<EmployeeResponse> retrieveEmployeeById(@PathVariable UUID id) {
+        SecurityUtil.requireOwnershipOrPermission(id, Permissions.EMPLOYEE_READ_ANY);
         return ResponseEntity.ok(EmployeeResponse.from(employeeService.retrieveEmployeeById(id)));
     }
 
@@ -71,6 +74,7 @@ public class EmployeeController {
 
     @PutMapping("/{id}/change-password")
     public ResponseEntity<EmployeeResponse> changeEmployeePassword(@PathVariable UUID id, @Valid @RequestBody ChangePasswordRequest changePasswordRequest) {
+        SecurityUtil.requireOwnershipOrPermission(id, Permissions.EMPLOYEE_PASSWORD_ANY);
         return ResponseEntity.ok(EmployeeResponse.from(employeeService.changeEmployeePassword(id, changePasswordRequest)));
     }
 

@@ -1,6 +1,6 @@
 package com.ficsolution.roster.web.controller;
 
-import com.ficsolution.roster.model.EmployeePrincipal;
+import com.ficsolution.roster.security.EmployeePrincipal;
 import com.ficsolution.roster.web.dto.auth.LoginRequest;
 import com.ficsolution.roster.web.dto.auth.LoginResponse;
 import jakarta.validation.Valid;
@@ -39,7 +39,8 @@ public class AuthController {
         JwtClaimsSet jwtClaimsSet = JwtClaimsSet.builder()
                 .subject(employee.getId().toString())
                 .claim("email", employee.getUsername())
-                .claim("roles", List.of(employee.getRoleName()))
+                .claim("role", employee.getRoleName())
+                .claim("permissions", List.copyOf(employee.getPermissions()))
                 .issuedAt(Instant.now())
                 .expiresAt(Instant.now().plusSeconds(EXPIRATION_SECONDS))
                 .build();

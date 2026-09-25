@@ -9,8 +9,8 @@ import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.model.Shift;
 import com.ficsolution.roster.model.ShiftSwapRequest;
 import com.ficsolution.roster.model.Store;
-import com.ficsolution.roster.model.enumModel.RequestStatus;
-import com.ficsolution.roster.model.enumModel.ShiftStatus;
+import com.ficsolution.roster.model.enums.RequestStatus;
+import com.ficsolution.roster.model.enums.ShiftStatus;
 import com.ficsolution.roster.service.ShiftSwapRequestService;
 import com.ficsolution.roster.util.Util;
 import com.ficsolution.roster.web.dto.shift.CreateSwapRequest;
@@ -20,6 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -30,6 +31,7 @@ import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.doNothing;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -150,22 +152,27 @@ public class ShiftSwapRequestControllerTest {
     @Test
     void mustUpdateShiftSwapStatusWithSuccess() throws Exception {
         ShiftSwapRequest shiftSwapRequest = buildShiftSwapRequest(RequestStatus.APPROVED);
-        UpdateShiftSwap update = new UpdateShiftSwap(RequestStatus.APPROVED, Util.employee1Id);
+        UpdateShiftSwap update = new UpdateShiftSwap(RequestStatus.APPROVED);
         given(shiftSwapRequestService.changeStatus(any(UUID.class), any(UUID.class), any(RequestStatus.class)))
                 .willReturn(shiftSwapRequest);
 
+        // logged employee (employee1Id) is the swap request target
         mockMvc.perform(put(String.format("/swap-requests/%s", Util.shiftSwapRequestId))
-                        .with(Util.authority)
+                        .with(Util.staffOtherAuthority)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(update)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(Util.shiftSwapRequestId.toString()))
                 .andExpect(jsonPath("$.status").value(RequestStatus.APPROVED.toString()));
+
+        // the logged employee id is what reaches the service
+        then(shiftSwapRequestService).should()
+                .changeStatus(Util.shiftSwapRequestId, Util.employee1Id, RequestStatus.APPROVED);
     }
 
     @Test
     void mustReturn400WhenUpdateRequestHasMissingFields() throws Exception {
-        UpdateShiftSwap update = new UpdateShiftSwap(null, Util.employee1Id);
+        UpdateShiftSwap update = new UpdateShiftSwap(null);
 
         mockMvc.perform(put(String.format("/swap-requests/%s", Util.shiftSwapRequestId))
                         .with(Util.authority)
@@ -176,12 +183,12 @@ public class ShiftSwapRequestControllerTest {
 
     @Test
     void mustReturn404WhenShiftSwapRequestNotFound() throws Exception {
-        UpdateShiftSwap update = new UpdateShiftSwap(RequestStatus.APPROVED, Util.employee1Id);
+        UpdateShiftSwap update = new UpdateShiftSwap(RequestStatus.APPROVED);
         given(shiftSwapRequestService.changeStatus(any(UUID.class), any(UUID.class), any(RequestStatus.class)))
                 .willThrow(ObjectNotFoundException.class);
 
         mockMvc.perform(put(String.format("/swap-requests/%s", Util.shiftSwapRequestId))
-                        .with(Util.authority)
+                        .with(Util.staffOtherAuthority)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(update)))
                 .andExpect(status().isNotFound());
@@ -189,12 +196,12 @@ public class ShiftSwapRequestControllerTest {
 
     @Test
     void mustReturn409WhenChangeStatusNotAllowed() throws Exception {
-        UpdateShiftSwap update = new UpdateShiftSwap(RequestStatus.APPROVED, Util.employee1Id);
+        UpdateShiftSwap update = new UpdateShiftSwap(RequestStatus.APPROVED);
         given(shiftSwapRequestService.changeStatus(any(UUID.class), any(UUID.class), any(RequestStatus.class)))
                 .willThrow(ObjectConflictException.class);
 
         mockMvc.perform(put(String.format("/swap-requests/%s", Util.shiftSwapRequestId))
-                        .with(Util.authority)
+                        .with(Util.staffOtherAuthority)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(update)))
                 .andExpect(status().isConflict());
@@ -224,6 +231,8 @@ public class ShiftSwapRequestControllerTest {
 
     @Test
     void mustDeleteShiftSwapRequest() throws Exception {
+        given(shiftSwapRequestService.retrieveShiftSwapRequestById(Util.shiftSwapRequestId))
+                .willReturn(buildShiftSwapRequest(RequestStatus.PENDING));
         doNothing().when(shiftSwapRequestService).deleteShiftSwapRequest(Util.shiftSwapRequestId);
 
         mockMvc.perform(delete(String.format("/swap-requests/%s", Util.shiftSwapRequestId))
@@ -233,8 +242,8 @@ public class ShiftSwapRequestControllerTest {
 
     @Test
     void mustReturn404WhenDeletingNonExistentShiftSwapRequest() throws Exception {
-        org.mockito.BDDMockito.willThrow(ObjectNotFoundException.class)
-                .given(shiftSwapRequestService).deleteShiftSwapRequest(Util.shiftSwapRequestId);
+        given(shiftSwapRequestService.retrieveShiftSwapRequestById(Util.shiftSwapRequestId))
+                .willThrow(ObjectNotFoundException.class);
 
         mockMvc.perform(delete(String.format("/swap-requests/%s", Util.shiftSwapRequestId))
                         .with(Util.authority))
@@ -243,11 +252,116 @@ public class ShiftSwapRequestControllerTest {
 
     @Test
     void mustReturn409WhenDeletingNonPendingShiftSwapRequest() throws Exception {
+        given(shiftSwapRequestService.retrieveShiftSwapRequestById(Util.shiftSwapRequestId))
+                .willReturn(buildShiftSwapRequest(RequestStatus.APPROVED));
         org.mockito.BDDMockito.willThrow(ObjectConflictException.class)
                 .given(shiftSwapRequestService).deleteShiftSwapRequest(Util.shiftSwapRequestId);
 
         mockMvc.perform(delete(String.format("/swap-requests/%s", Util.shiftSwapRequestId))
                         .with(Util.authority))
                 .andExpect(status().isConflict());
+    }
+
+    @Test
+    void mustAllowStaffToCreateSwapRequestForSelf() throws Exception {
+        ShiftSwapRequest shiftSwapRequest = buildShiftSwapRequest(RequestStatus.PENDING);
+        CreateSwapRequest request = new CreateSwapRequest(Util.shiftId, Util.employeeId, Util.employee1Id);
+        given(shiftSwapRequestService.createShiftSwapRequest(any(ShiftSwapRequest.class))).willReturn(shiftSwapRequest);
+
+        mockMvc.perform(post(String.format("/shifts/%s/swap-requests", Util.shiftId))
+                        .with(Util.staffAuthority)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void mustReturn403WhenStaffCreatesSwapRequestAsAnotherEmployee() throws Exception {
+        CreateSwapRequest request = new CreateSwapRequest(Util.shiftId, Util.employeeId, Util.employee1Id);
+
+        mockMvc.perform(post(String.format("/shifts/%s/swap-requests", Util.shiftId))
+                        .with(Util.staffOtherAuthority)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void mustAllowStaffToUpdateOwnTargetedSwapRequest() throws Exception {
+        ShiftSwapRequest shiftSwapRequest = buildShiftSwapRequest(RequestStatus.APPROVED);
+        UpdateShiftSwap update = new UpdateShiftSwap(RequestStatus.APPROVED);
+        given(shiftSwapRequestService.changeStatus(any(UUID.class), any(UUID.class), any(RequestStatus.class)))
+                .willReturn(shiftSwapRequest);
+
+        mockMvc.perform(put(String.format("/swap-requests/%s", Util.shiftSwapRequestId))
+                        .with(Util.staffOtherAuthority)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(update)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void mustReturn403WhenStaffUpdatesSwapRequestTargetedAtAnotherEmployee() throws Exception {
+        UpdateShiftSwap update = new UpdateShiftSwap(RequestStatus.APPROVED);
+        // service rejects because the logged employee (employeeId) is not the target
+        given(shiftSwapRequestService.changeStatus(Util.shiftSwapRequestId, Util.employeeId, RequestStatus.APPROVED))
+                .willThrow(new AccessDeniedException("Only the target employee can change the status of this swap request."));
+
+        mockMvc.perform(put(String.format("/swap-requests/%s", Util.shiftSwapRequestId))
+                        .with(Util.staffAuthority)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(update)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void mustAllowRequesterToRetrieveOwnShiftSwapRequestById() throws Exception {
+        given(shiftSwapRequestService.retrieveShiftSwapRequestById(Util.shiftSwapRequestId))
+                .willReturn(buildShiftSwapRequest(RequestStatus.PENDING));
+
+        mockMvc.perform(get(String.format("/swap-requests/%s", Util.shiftSwapRequestId))
+                        .with(Util.staffAuthority))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void mustAllowTargetToRetrieveShiftSwapRequestById() throws Exception {
+        given(shiftSwapRequestService.retrieveShiftSwapRequestById(Util.shiftSwapRequestId))
+                .willReturn(buildShiftSwapRequest(RequestStatus.PENDING));
+
+        mockMvc.perform(get(String.format("/swap-requests/%s", Util.shiftSwapRequestId))
+                        .with(Util.staffOtherAuthority))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void mustReturn403WhenUnrelatedStaffRetrievesShiftSwapRequestById() throws Exception {
+        given(shiftSwapRequestService.retrieveShiftSwapRequestById(Util.shiftSwapRequestId))
+                .willReturn(buildShiftSwapRequest(RequestStatus.PENDING));
+
+        mockMvc.perform(get(String.format("/swap-requests/%s", Util.shiftSwapRequestId))
+                        .with(Util.staffThirdAuthority))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void mustAllowRequesterToDeleteOwnShiftSwapRequest() throws Exception {
+        given(shiftSwapRequestService.retrieveShiftSwapRequestById(Util.shiftSwapRequestId))
+                .willReturn(buildShiftSwapRequest(RequestStatus.PENDING));
+        doNothing().when(shiftSwapRequestService).deleteShiftSwapRequest(Util.shiftSwapRequestId);
+
+        mockMvc.perform(delete(String.format("/swap-requests/%s", Util.shiftSwapRequestId))
+                        .with(Util.staffAuthority))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void mustReturn403WhenTargetTriesToDeleteShiftSwapRequest() throws Exception {
+        given(shiftSwapRequestService.retrieveShiftSwapRequestById(Util.shiftSwapRequestId))
+                .willReturn(buildShiftSwapRequest(RequestStatus.PENDING));
+
+        mockMvc.perform(delete(String.format("/swap-requests/%s", Util.shiftSwapRequestId))
+                        .with(Util.staffOtherAuthority))
+                .andExpect(status().isForbidden());
     }
 }

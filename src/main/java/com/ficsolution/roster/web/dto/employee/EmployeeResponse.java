@@ -1,7 +1,7 @@
 package com.ficsolution.roster.web.dto.employee;
 
 import com.ficsolution.roster.model.Employee;
-import com.ficsolution.roster.model.enumModel.EmployeeStatus;
+import com.ficsolution.roster.model.enums.EmployeeStatus;
 import com.ficsolution.roster.web.dto.role.RoleResponse;
 
 import java.util.UUID;

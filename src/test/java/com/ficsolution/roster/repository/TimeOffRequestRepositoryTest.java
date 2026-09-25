@@ -2,8 +2,8 @@ package com.ficsolution.roster.repository;
 
 import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.model.TimeOffRequest;
-import com.ficsolution.roster.model.enumModel.RequestStatus;
-import com.ficsolution.roster.model.enumModel.TimeOffRequestType;
+import com.ficsolution.roster.model.enums.RequestStatus;
+import com.ficsolution.roster.model.enums.TimeOffRequestType;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;

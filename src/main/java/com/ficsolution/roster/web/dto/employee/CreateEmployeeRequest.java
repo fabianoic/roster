@@ -1,6 +1,6 @@
 package com.ficsolution.roster.web.dto.employee;
 
-import com.ficsolution.roster.annotation.ValidPassword;
+import com.ficsolution.roster.validation.ValidPassword;
 import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.model.Role;
 import jakarta.validation.constraints.Email;

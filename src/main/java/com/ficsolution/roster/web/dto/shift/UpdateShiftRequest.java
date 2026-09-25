@@ -6,7 +6,7 @@ import com.fasterxml.jackson.datatype.jsr310.deser.LocalTimeDeserializer;
 import com.fasterxml.jackson.datatype.jsr310.ser.LocalTimeSerializer;
 import com.ficsolution.roster.model.Shift;
 import com.ficsolution.roster.model.Store;
-import com.ficsolution.roster.model.enumModel.ShiftStatus;
+import com.ficsolution.roster.model.enums.ShiftStatus;
 
 import java.time.LocalTime;
 import java.util.UUID;

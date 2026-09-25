@@ -2,7 +2,7 @@ package com.ficsolution.roster.repository;
 
 import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.model.Role;
-import com.ficsolution.roster.model.enumModel.EmployeeStatus;
+import com.ficsolution.roster.model.enums.EmployeeStatus;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;

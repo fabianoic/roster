@@ -144,4 +144,51 @@ public class StoreControllerTest {
                 .andExpect(status().isNoContent());
 
     }
+
+    @Test
+    void mustReturn403WhenStaffCreatesStore() throws Exception {
+        mockMvc.perform(post(path)
+                        .with(Util.staffAuthority)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(new StoreRequest("Ballsbridge", "Avoca Market"))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void mustReturn403WhenStaffUpdatesStore() throws Exception {
+        UUID id = UUID.randomUUID();
+        mockMvc.perform(put(String.format("%s/%s", path, id))
+                        .with(Util.staffAuthority)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(new StoreRequest("new Name", "new Address"))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void mustReturn403WhenStaffDeletesStore() throws Exception {
+        UUID id = UUID.randomUUID();
+        mockMvc.perform(delete(String.format("%s/%s", path, id))
+                        .with(Util.staffAuthority))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void mustAllowStaffToListStores() throws Exception {
+        given(storeService.retrieveAllStores()).willReturn(List.of());
+
+        mockMvc.perform(get(path)
+                        .with(Util.staffAuthority))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void mustAllowStaffToRetrieveStoreById() throws Exception {
+        UUID id = UUID.randomUUID();
+        given(storeService.retrieveStoreById(id)).willReturn(
+                Store.builder().id(id).name("Ballsbridge").address("Avoca Market").createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build());
+
+        mockMvc.perform(get(String.format("%s/%s", path, id))
+                        .with(Util.staffAuthority))
+                .andExpect(status().isOk());
+    }
 }

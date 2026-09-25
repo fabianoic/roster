@@ -6,8 +6,8 @@ import com.ficsolution.roster.config.SecurityConfig;
 import com.ficsolution.roster.exception.ObjectNotFoundException;
 import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.model.TimeOffRequest;
-import com.ficsolution.roster.model.enumModel.RequestStatus;
-import com.ficsolution.roster.model.enumModel.TimeOffRequestType;
+import com.ficsolution.roster.model.enums.RequestStatus;
+import com.ficsolution.roster.model.enums.TimeOffRequestType;
 import com.ficsolution.roster.service.TimeOffRequestService;
 import com.ficsolution.roster.util.Util;
 import com.ficsolution.roster.web.dto.timeoff.CreateTimeOffRequest;
@@ -239,6 +239,7 @@ public class TimeOffRequestControllerTest {
     @Test
     void mustDeleteTimeOffRequest() throws Exception {
         UUID id = UUID.randomUUID();
+        given(timeOffRequestService.retrieveTimeOffRequestById(id)).willReturn(buildTimeOffRequest(id, RequestStatus.PENDING));
         doNothing().when(timeOffRequestService).deleteTimeOffRequest(id);
 
         mockMvc.perform(delete(String.format("%s/%s", path, id))
@@ -249,11 +250,133 @@ public class TimeOffRequestControllerTest {
     @Test
     void mustReturn404WhenDeletingNonExistentRequest() throws Exception {
         UUID id = UUID.randomUUID();
-        org.mockito.BDDMockito.willThrow(ObjectNotFoundException.class)
-                .given(timeOffRequestService).deleteTimeOffRequest(id);
+        given(timeOffRequestService.retrieveTimeOffRequestById(id)).willThrow(ObjectNotFoundException.class);
 
         mockMvc.perform(delete(String.format("%s/%s", path, id))
                         .with(Util.authority))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void mustReturn403WhenStaffListsAllTimeOffRequests() throws Exception {
+        mockMvc.perform(get(path)
+                        .with(Util.staffAuthority))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void mustAllowStaffToListOwnTimeOffRequestsByEmployeeId() throws Exception {
+        given(timeOffRequestService.retrieveAllTimeOffRequestsByEmployeeId(Util.employeeId))
+                .willReturn(List.of(buildTimeOffRequest(UUID.randomUUID(), RequestStatus.PENDING)));
+
+        mockMvc.perform(get(path)
+                        .with(Util.staffAuthority)
+                        .param("employeeId", Util.employeeId.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.*", hasSize(1)));
+    }
+
+    @Test
+    void mustReturn403WhenStaffListsTimeOffRequestsOfAnotherEmployee() throws Exception {
+        mockMvc.perform(get(path)
+                        .with(Util.staffOtherAuthority)
+                        .param("employeeId", Util.employeeId.toString()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void mustAllowStaffToCreateOwnTimeOffRequest() throws Exception {
+        UUID id = UUID.randomUUID();
+        CreateTimeOffRequest request = new CreateTimeOffRequest(
+                Util.employeeId,
+                LocalDate.now(),
+                LocalDate.now().plusDays(2),
+                "I'll move",
+                TimeOffRequestType.PERSONAL
+        );
+        given(timeOffRequestService.createTimeOffRequest(any(TimeOffRequest.class)))
+                .willReturn(buildTimeOffRequest(id, RequestStatus.PENDING));
+
+        mockMvc.perform(post(path)
+                        .with(Util.staffAuthority)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void mustReturn403WhenStaffCreatesTimeOffRequestForAnotherEmployee() throws Exception {
+        CreateTimeOffRequest request = new CreateTimeOffRequest(
+                Util.employeeId,
+                LocalDate.now(),
+                LocalDate.now().plusDays(2),
+                "I'll move",
+                TimeOffRequestType.PERSONAL
+        );
+
+        mockMvc.perform(post(path)
+                        .with(Util.staffOtherAuthority)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void mustAllowStaffToRetrieveOwnTimeOffRequestById() throws Exception {
+        UUID id = UUID.randomUUID();
+        given(timeOffRequestService.retrieveTimeOffRequestById(id)).willReturn(buildTimeOffRequest(id, RequestStatus.PENDING));
+
+        mockMvc.perform(get(String.format("%s/%s", path, id))
+                        .with(Util.staffAuthority))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void mustReturn403WhenStaffRetrievesAnotherEmployeeTimeOffRequestById() throws Exception {
+        UUID id = UUID.randomUUID();
+        given(timeOffRequestService.retrieveTimeOffRequestById(id)).willReturn(buildTimeOffRequest(id, RequestStatus.PENDING));
+
+        mockMvc.perform(get(String.format("%s/%s", path, id))
+                        .with(Util.staffOtherAuthority))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void mustReturn403WhenStaffUpdatesTimeOffRequest() throws Exception {
+        UUID id = UUID.randomUUID();
+        UpdateTimeOffRequest request = new UpdateTimeOffRequest(
+                LocalDate.now(),
+                LocalDate.now().plusDays(2),
+                "new reason",
+                TimeOffRequestType.PERSONAL,
+                RequestStatus.APPROVED
+        );
+
+        mockMvc.perform(put(String.format("%s/%s", path, id))
+                        .with(Util.staffAuthority)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void mustAllowStaffToDeleteOwnTimeOffRequest() throws Exception {
+        UUID id = UUID.randomUUID();
+        given(timeOffRequestService.retrieveTimeOffRequestById(id)).willReturn(buildTimeOffRequest(id, RequestStatus.PENDING));
+        doNothing().when(timeOffRequestService).deleteTimeOffRequest(id);
+
+        mockMvc.perform(delete(String.format("%s/%s", path, id))
+                        .with(Util.staffAuthority))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void mustReturn403WhenStaffDeletesAnotherEmployeeTimeOffRequest() throws Exception {
+        UUID id = UUID.randomUUID();
+        given(timeOffRequestService.retrieveTimeOffRequestById(id)).willReturn(buildTimeOffRequest(id, RequestStatus.PENDING));
+
+        mockMvc.perform(delete(String.format("%s/%s", path, id))
+                        .with(Util.staffOtherAuthority))
+                .andExpect(status().isForbidden());
     }
 }
