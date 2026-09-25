@@ -13,7 +13,8 @@ Unlike the other services in the ecosystem, **roster is standalone**: it neither
 | Persistence | Spring Data JPA + PostgreSQL 16 |
 | Migrations | Flyway (`spring-boot-starter-flyway`) |
 | Authentication | OAuth2 Resource Server + self-issued JWT (in-memory RSA via Nimbus) |
-| Authorization | Permission-based access control, permissions stored in the database |
+| Authorization | Permission-based RBAC (roles are just named permission sets, resolved at runtime) |
+| Observability | Spring Boot Actuator |
 | Documentation | springdoc-openapi 3.0.2 (Swagger UI) |
 | Testing | JUnit 5, Mockito, Testcontainers (Postgres), `@WebMvcTest` |
 | Boilerplate | Lombok |
@@ -46,13 +47,13 @@ graph TD
 ```mermaid
 graph TD
     Client["HTTP Client<br/>Postman / Swagger UI"]
-    Security["config + security<br/>SecurityConfig, JwtConfig, permissions"]
+    Security["config + security<br/>SecurityConfig, JwtConfig,<br/>EmployeePrincipal, SecurityUtil"]
     Controller["web.controller"]
     DTO["web.dto"]
-    Handler["web.handler<br/>GlobalExceptionHandler"]
     Service["service"]
-    Repository["repository<br/>+ specification"]
-    Model["model"]
+    Repository["repository<br/>+ repository.specification"]
+    Model["model<br/>+ model.enums"]
+    Handler["web.handler<br/>GlobalExceptionHandler"]
     DB[("PostgreSQL")]
 
     Client --> Security --> Controller
@@ -64,7 +65,7 @@ graph TD
     Controller -. "domain exceptions" .-> Handler
 ```
 
-Standard request flow: the `Controller` receives and validates the DTO (`@Valid`), delegates to the `Service` (business logic), which talks to the `Repository` (JPA). Domain exceptions (`ObjectNotFoundException`, `ObjectConflictException`) and `AccessDeniedException` bubble up untreated and are caught centrally by `web.handler.GlobalExceptionHandler`, never by `try/catch` scattered across controllers.
+Standard request flow: `SecurityConfig` gates the request by permission at the route level, the `Controller` receives and validates the DTO (`@Valid`), optionally enforces ownership via `SecurityUtil` (see [Authorization model](#authorization-model)), and delegates to the `Service` (business logic), which talks to the `Repository` (JPA). Domain exceptions (`ObjectNotFoundException`, `ObjectConflictException`, `AccessDeniedException`) bubble up untreated and are caught centrally by the `GlobalExceptionHandler`, never by `try/catch` scattered across controllers.
 
 ## Data model
 
@@ -73,7 +74,7 @@ erDiagram
     STORE ||--o{ SHIFT : hosts
     ROLE ||--o{ EMPLOYEE : classifies
     ROLE ||--o{ ROLE_PERMISSION : grants
-    PERMISSION ||--o{ ROLE_PERMISSION : granted_by
+    PERMISSION ||--o{ ROLE_PERMISSION : granted_via
     EMPLOYEE ||--o{ SHIFT : assigned_to
     EMPLOYEE ||--o{ AVAILABILITY : declares
     EMPLOYEE ||--o{ TIME_OFF_REQUEST : submits
@@ -91,8 +92,8 @@ erDiagram
         string description
     }
     ROLE_PERMISSION {
-        uuid role_id PK, FK
-        uuid permission_id PK, FK
+        uuid role_id FK
+        uuid permission_id FK
     }
     STORE {
         uuid id PK
@@ -108,9 +109,6 @@ erDiagram
         string password_hash
         uuid role_id FK
         string status
-        boolean account_locked
-        int failed_attempt
-        timestamp lock_time
         timestamp created_at
         timestamp updated_at
     }
@@ -158,14 +156,7 @@ erDiagram
 
 Note that `EMPLOYEE` has no `store_id` — an employee doesn't belong to a fixed store. The link between employee and store originates from `SHIFT`, since a person can be scheduled at more than one location.
 
-Migrations (`src/main/resources/db/migration`):
-
-| Version | Content |
-|---|---|
-| V1 | Schema (store, role, employee, shift, availability, time_off_request, shift_swap_request) |
-| V2 | Seed data (stores, roles `MANAGER`/`SUPERVISOR`/`STAFF`, employees, shifts...) |
-| V3 | Account lockout columns on `employee` |
-| V4 | `permission` + `role_permission` tables, seeded with the default grants per role |
+`ROLE` doesn't hardcode behavior: it's just a name attached to a set of `PERMISSION`s through `ROLE_PERMISSION`. Seeded roles (`MANAGER`, `SUPERVISOR`, `STAFF`) are a starting point, not a fixed enum — see below.
 
 ## Authentication
 
@@ -190,78 +181,35 @@ sequenceDiagram
     AC-->>C: 200 OK { token, expiresInSeconds }
 ```
 
-- The service issues its own tokens (there is no external Authorization Server). The RSA key pair is generated in memory at startup (`JwtConfig.rsaKeyPair()`) — simple enough for this stage of the project, with the trade-off that every restart invalidates previously issued tokens.
-- Tokens are valid for 1 hour. `sub` is the employee id; `permissions` becomes the request's authorities (no `ROLE_` prefix); `role` is informational only and is never used for authorization.
-- **Account lockout**: `security.AuthenticationEventListener` listens to Spring Security's authentication events. Each bad password increments `failed_attempt`; at 3 consecutive failures the account is locked (`account_locked = true`, `lock_time` recorded). A successful login resets the counter. There is currently no automatic unlock.
-- Only `ACTIVE` employees can log in.
+The service issues its own tokens (there is no external Authorization Server). The RSA key pair is generated in memory at startup (`JwtConfig.rsaKeyPair()`) — simple enough for this stage of the project, with the trade-off that every restart invalidates previously issued tokens.
 
-## Authorization
+`EmployeePrincipal` resolves `employee.getRole().getPermissions()` **inside** `loadUserByUsername`'s transaction and copies the permission names into a plain `Set<String>` — the JPA-managed `Role`/`Permission` entities never leak outside that transaction, which is what avoids `LazyInitializationException` down the line.
 
-Access is **permission-based**: every rule checks a permission, never a role name. A role is just a named group of permissions, stored in `role_permission`, so a new role created via `/roles` becomes usable by assigning permissions to it — no code change needed.
+## Authorization model
 
-Rules are enforced in two places:
+Authorization is **permission-based**, not role-based: the API never checks `hasRole("MANAGER")` anywhere. Instead:
 
-1. **URL gate** — `config.SecurityConfig` (`hasAuthority` / `hasAnyAuthority`).
-2. **Ownership** — in the controllers, via `security.SecurityUtil.requireOwnershipOrPermission(ownerId, X_ANY)`: the caller must own the resource or hold the `*_ANY` permission.
+1. Each `Role` is just a name attached to a set of `Permission`s (`MANAGER`, `SUPERVISOR`, `STAFF` today, seeded in `V4__permissions.sql`).
+2. On login, the employee's permission names are copied into the JWT as a `permissions` claim (e.g. `["STORE_READ", "SHIFT_READ", "TIME_OFF_SELF"]`).
+3. `SecurityConfig` gates every route by permission (`hasAuthority(Permissions.STORE_READ)`), never by role name.
+4. Adding a new role, or changing what an existing role can do, is a **data change** — `POST /roles` + `PUT /roles/{id}/permissions` — not a code change or a redeploy.
 
-Naming convention: `X_SELF` lets the employee act on their own data; `X_ANY` lets them act on anyone's data. Permission names live in `security.Permissions` and must match the rows seeded in V4.
+Many permissions come in `_SELF` / `_ANY` pairs (e.g. `TIME_OFF_SELF`, `TIME_OFF_ANY`). The route matcher only confirms the caller holds *one of the two* — it can't know, at the routing level, whether the record in the URL/body actually belongs to the caller. That check happens in the controller, via `SecurityUtil`:
 
-Default grants (V4 seed):
+```java
+// caller must own employeeId, unless they hold the "_ANY" permission
+SecurityUtil.requireOwnershipOrPermission(employeeId, Permissions.TIME_OFF_ANY);
+```
 
-| Permission | MANAGER | SUPERVISOR | STAFF |
-|---|:-:|:-:|:-:|
-| `ROLE_MANAGE` | ✓ | | |
-| `STORE_READ` | ✓ | ✓ | ✓ |
-| `STORE_WRITE` | ✓ | | |
-| `EMPLOYEE_READ_SELF` | ✓ | ✓ | ✓ |
-| `EMPLOYEE_READ_ANY` | ✓ | ✓ | |
-| `EMPLOYEE_WRITE` | ✓ | | |
-| `EMPLOYEE_PASSWORD_SELF` | ✓ | ✓ | ✓ |
-| `EMPLOYEE_PASSWORD_ANY` | ✓ | | |
-| `SHIFT_READ` | ✓ | ✓ | ✓ |
-| `SHIFT_WRITE` | ✓ | ✓ | |
-| `SWAP_REQUEST_SELF` | ✓ | ✓ | ✓ |
-| `SWAP_REQUEST_ANY` | ✓ | ✓ | |
-| `TIME_OFF_SELF` | ✓ | ✓ | ✓ |
-| `TIME_OFF_ANY` | ✓ | ✓ | |
-| `TIME_OFF_REVIEW` | ✓ | ✓ | |
-| `AVAILABILITY_SELF` | ✓ | ✓ | ✓ |
-| `AVAILABILITY_ANY` | ✓ | ✓ | |
+`SecurityUtil.currentEmployeeId()` reads the caller's identity from the JWT `sub` claim — request bodies are never trusted to say who's calling. That distinction mattered in practice: an earlier version of `PUT /swap-requests/{id}` took the acting employee's id from the request body, which meant a caller could claim to be the swap's target. The fix removed that field from the DTO entirely; the acting identity now always comes from `SecurityUtil.currentEmployeeId()`, and the service re-validates it against the swap request's real `target`.
 
-Grants can be changed at runtime with `PUT /roles/{id}/permissions` (replaces the role's whole set). Because permissions are embedded in the JWT, a change only takes effect for a user at their next login.
+**Known trade-off**: permissions are baked into the JWT at login time. If a `MANAGER` changes a role's permissions mid-flight, employees already holding a token keep their old permission set until it expires (1 hour) or they log in again. Acceptable for this project's scale; a production system with tighter requirements would need either short-lived tokens with refresh, or a permission lookup on each request instead of trusting the token's claim.
 
-## Implemented endpoints
+### Use case diagram
 
-| Method | Route | Required permission |
-|---|---|---|
-| POST | `/auth/login` | Public |
-| POST / GET / PUT / DELETE | `/roles`, `/roles/{id}` | `ROLE_MANAGE` |
-| GET / PUT | `/roles/{id}/permissions` | `ROLE_MANAGE` |
-| GET | `/permissions` | `ROLE_MANAGE` |
-| GET | `/stores`, `/stores/{id}` | `STORE_READ` |
-| POST / PUT / DELETE | `/stores`, `/stores/{id}` | `STORE_WRITE` |
-| POST | `/employees` | `EMPLOYEE_WRITE` |
-| GET | `/employees` (paged; filters `roleId`, `name`, `email`, `status`) | `EMPLOYEE_READ_ANY` |
-| GET | `/employees?email=` | `EMPLOYEE_READ_ANY` |
-| GET | `/employees/{id}` | own: `EMPLOYEE_READ_SELF` · others: `EMPLOYEE_READ_ANY` |
-| PUT | `/employees/{id}`, `/employees/{id}/change-status` | `EMPLOYEE_WRITE` |
-| PUT | `/employees/{id}/change-password` | own: `EMPLOYEE_PASSWORD_SELF` · others: `EMPLOYEE_PASSWORD_ANY` |
-| GET | `/shifts` (filters `employeeId`, `storeId`, `start`, `end`), `/shifts/{id}` | `SHIFT_READ` |
-| POST / PUT | `/shifts`, `/shifts/{id}` | `SHIFT_WRITE` |
-| POST | `/shifts/{id}/swap-requests` | requester is self: `SWAP_REQUEST_SELF` · otherwise: `SWAP_REQUEST_ANY` |
-| GET | `/swap-requests/{id}` | requester or target: `SWAP_REQUEST_SELF` · otherwise: `SWAP_REQUEST_ANY` |
-| PUT | `/swap-requests/{id}` | only the swap's **target** (logged employee, validated in the service) |
-| DELETE | `/swap-requests/{id}` | requester: `SWAP_REQUEST_SELF` · otherwise: `SWAP_REQUEST_ANY` |
-| POST | `/time-off-requests` | own: `TIME_OFF_SELF` · others: `TIME_OFF_ANY` |
-| GET | `/time-off-requests` | `TIME_OFF_ANY` |
-| GET | `/time-off-requests?employeeId=`, `/time-off-requests/{id}` | own: `TIME_OFF_SELF` · others: `TIME_OFF_ANY` |
-| PUT | `/time-off-requests/{id}` | `TIME_OFF_REVIEW` |
-| DELETE | `/time-off-requests/{id}` | own: `TIME_OFF_SELF` · others: `TIME_OFF_ANY` |
-| POST | `/availabilities` | own: `AVAILABILITY_SELF` · others: `AVAILABILITY_ANY` |
-| GET | `/availabilities` | `AVAILABILITY_ANY` |
-| GET / PUT / DELETE | `/availabilities?employeeId=`, `/availabilities/{id}` | own: `AVAILABILITY_SELF` · others: `AVAILABILITY_ANY` |
+![Roster use case diagram](D:\Documents\Projectos\Spring%20Boot\roster_user_case_v4.png)
 
-Error responses use `ProblemDetail` (RFC 7807): 400 validation, 401 unauthenticated, 403 missing permission / not the owner, 404 not found, 409 conflict (e.g. changing a swap or time-off request that is no longer `PENDING`).
+`Manager` is modeled as a specialization of `Any User` (UML actor generalization) — it inherits every self-service use case (checking a shift, requesting a swap, declaring availability, requesting time off) and adds the administrative ones (managing roles/permissions, stores, employees). This mirrors the permission model above: a `MANAGER` role is simply seeded with every permission a `STAFF` has, plus the administrative ones — the diagram and the `role_permission` table describe the same boundary from two angles.
 
 ## Code conventions
 
@@ -269,38 +217,42 @@ Error responses use `ProblemDetail` (RFC 7807): 400 validation, 401 unauthentica
 
 ```
 com.ficsolution.roster/
-├── config/                  # SecurityConfig, JwtConfig, SwaggerConfig
-├── exception/               # domain exceptions (ObjectNotFoundException, ObjectConflictException)
-├── model/                   # JPA entities
-│   └── enums/               # domain enums (EmployeeStatus, ShiftStatus...)
-├── repository/              # JpaRepository interfaces
-│   └── specification/       # JPA Specifications for filtered queries
-├── security/                # Permissions, SecurityUtil, EmployeePrincipal,
-│                            # EmployeeUserDetailsService, AuthenticationEventListener
-├── service/                 # business logic
-├── validation/              # @ValidPassword + PasswordValidator
+├── config/              # SecurityConfig, JwtConfig, SwaggerConfig
+├── security/            # EmployeePrincipal, EmployeeUserDetailsService, SecurityUtil, Permissions
+├── validation/          # @ValidPassword + its ConstraintValidator
+├── exception/           # domain exceptions (ObjectNotFoundException, ObjectConflictException)
+├── model/               # JPA entities
+│   └── enums/           # domain enums (EmployeeStatus, ShiftStatus, RequestStatus, TimeOffRequestType)
+├── repository/           # JpaRepository interfaces
+│   └── specification/   # Specification<T> filters (EmployeeSpecification, ShiftSpecification)
+├── service/             # business logic
 └── web/
-    ├── controller/          # REST controllers, thin
-    ├── handler/             # GlobalExceptionHandler (@RestControllerAdvice)
+    ├── controller/      # REST controllers, thin
+    ├── handler/         # GlobalExceptionHandler (ProblemDetail / RFC 7807)
     └── dto/
-        ├── auth/  availability/  common/  employee/  permission/
-        └── role/  shift/  store/  timeoff/
+        ├── auth/        # LoginRequest, LoginResponse
+        ├── employee/    # ...Employee request/response DTOs
+        ├── permission/  # PermissionResponse, RolePermissionsRequest
+        ├── role/        # RoleRequest, RoleResponse
+        ├── shift/        # ...
+        ├── timeoff/      # ...
+        ├── availability/ # ...
+        └── common/       # PagedResponse and other shared shapes
 ```
 
-Every new entity follows the same pattern: DTOs live in `web/dto/<entity>/`, never inside the entity's own file. Tests mirror the main packages (`repository`, `service`, `web/controller`).
+Every new entity follows the same pattern: DTOs live in `web/dto/<entity>/`, never inside the entity's own file.
 
 ### DTO conventions
 
 - No `DTO` suffix in the name — `RoleRequest`, not `RoleDTO`.
-- A single `XRequest` covers both creation and update when the fields don't diverge (the case of `RoleRequest`). Split into `CreateXRequest`/`UpdateXRequest` only when the rules genuinely differ between the two flows.
+- A single `XRequest` covers both creation and update when the fields don't diverge. Split into `CreateXRequest`/`UpdateXRequest` only when the rules genuinely differ between the two flows.
 - Always a `record`, never a class.
 - `XResponse.from(entity)` — static factory method for Entity → DTO.
 - `XRequest.toEntity()` — instance method for DTO → Entity, **only when construction is a direct field copy**, with no dependency on a repository or another bean. As soon as assembly requires fetching something from the database or applying a rule (e.g. `EmployeeService.createEmployee`, which resolves `Role` and hashes the password), that logic belongs in the `service`, not in the DTO.
-- Never trust the body for "who is acting": the acting employee comes from the token (`SecurityUtil.currentEmployeeId()`), e.g. `UpdateShiftSwap` carries only `status`.
 
 ### Dependency injection
 
-Adopted pattern: **constructor injection** via `@RequiredArgsConstructor` (Lombok), `private final` field. Correct reference: `RoleService`, `EmployeeUserDetailsService`.
+Adopted pattern: **constructor injection** via `@RequiredArgsConstructor` (Lombok), `private final` field.
 
 ### Domain exceptions
 
@@ -308,8 +260,9 @@ Two generic exceptions, parameterized by data rather than by type:
 
 - `ObjectNotFoundException(String resourceName, String identifier)` → 404
 - `ObjectConflictException(String resourceName, String reason)` → 409
+- Spring Security's `AccessDeniedException` → 403 (mapped centrally alongside the two above)
 
-This avoids the explosion of one class per entity (`EmployeeNotFoundException`, `RoleNotFoundException`, ...) when the behavior is identical and only the data changes. Handled centrally by `web.handler.GlobalExceptionHandler`, which responds with `ProblemDetail` (RFC 7807). Authorization failures raised in controllers or services use Spring Security's `AccessDeniedException` → 403.
+This avoids the explosion of one class per entity (`EmployeeNotFoundException`, `RoleNotFoundException`, ...) when the behavior is identical and only the data changes. Handled centrally by `GlobalExceptionHandler`, which responds with `ProblemDetail` (RFC 7807).
 
 ### Validation
 
@@ -317,18 +270,61 @@ Bean Validation on the DTOs (`@NotBlank`, `@Email`, `@Size`). Password rule via 
 
 ### IDs
 
-All entities use `@GeneratedValue(strategy = GenerationType.UUID)`, with `DEFAULT gen_random_uuid()` on the database side.
+`@GeneratedValue(strategy = GenerationType.UUID)` on every entity.
+
+### JPA entities
+
+`@Getter`/`@Setter` only — never Lombok's `@Data` on an entity. `@Data` generates `equals()`/`hashCode()`/`toString()` that touch every field, including lazy associations, which is exactly what triggers `LazyInitializationException` once the entity leaves its transaction (this bit us twice early on, on the `Employee → Role` association).
 
 ### Tests
 
-- **Repository**: `@DataJpaTest` + Testcontainers (real Postgres), never H2 or mocks. Uses the same Flyway migrations as the app (`src/main/resources/db/migration`) — there are no test-only migrations.
+- **Repository**: `@DataJpaTest` + Testcontainers (real Postgres), never H2 or mocks.
 - **Service**: plain JUnit 5 + Mockito, no Spring context.
-- **Controller**: `@WebMvcTest` + `@MockitoBean` (the old `@MockBean` was removed in Boot 4 — watch out to import from `org.springframework.test.context.bean.override.mockito`, not `org.springframework.boot.test.mock.mockito`). Requires the `spring-boot-starter-webmvc-test` dependency, separate from `spring-boot-starter-test` since Boot 4's modularization.
-- **Security in controller tests**: `util.Util` provides JWTs whose authorities mirror the V4 seed (`authority` = manager, `supervisorAuthority`, `staffAuthority`...) and `Util.authorities(...)` to build a token with an arbitrary set of permissions. Keep `MANAGER_PERMISSIONS` / `SUPERVISOR_PERMISSIONS` / `STAFF_PERMISSIONS` in sync with the seed.
+- **Controller**: `@WebMvcTest` + `@MockitoBean` (the old `@MockBean` was removed in Boot 4 — watch out to import from `org.springframework.test.context.bean.override.mockito`, not `org.springframework.boot.test.mock.mockito`). Requires the `spring-boot-starter-webmvc-test` dependency, separate from `spring-boot-starter-test` since Boot 4's modularization. Authorization tests use dedicated JWT post-processors per permission set (`Util.staffAuthority`, `Util.supervisorAuthority`, ...), each with a real `sub` claim, so ownership checks are actually exercised — not just role gating.
 
-```bash
-./mvnw clean test    # full suite; Docker must be running for Testcontainers
-```
+## Implemented endpoints
+
+| Method | Route | Required permission |
+|---|---|---|
+| POST | `/auth/login` | Public |
+| POST | `/roles` | `ROLE_MANAGE` |
+| GET | `/roles` | `ROLE_MANAGE` |
+| GET | `/roles/{id}` | `ROLE_MANAGE` |
+| PUT | `/roles/{id}` | `ROLE_MANAGE` |
+| DELETE | `/roles/{id}` | `ROLE_MANAGE` |
+| GET | `/roles/{id}/permissions` | `ROLE_MANAGE` |
+| PUT | `/roles/{id}/permissions` | `ROLE_MANAGE` |
+| GET | `/permissions` | `ROLE_MANAGE` |
+| POST | `/stores` | `STORE_WRITE` |
+| GET | `/stores`, `/stores/{id}` | `STORE_READ` |
+| PUT | `/stores/{id}` | `STORE_WRITE` |
+| DELETE | `/stores/{id}` | `STORE_WRITE` |
+| POST | `/employees` | `EMPLOYEE_WRITE` |
+| GET | `/employees` (list, and lookup by `?email=`) | `EMPLOYEE_READ_ANY` |
+| GET | `/employees/{id}` | `EMPLOYEE_READ_SELF` (own id) or `EMPLOYEE_READ_ANY` |
+| PUT | `/employees/{id}` | `EMPLOYEE_WRITE` |
+| PUT | `/employees/{id}/change-status` | `EMPLOYEE_WRITE` |
+| PUT | `/employees/{id}/change-password` | `EMPLOYEE_PASSWORD_SELF` (own id) or `EMPLOYEE_PASSWORD_ANY` |
+| POST | `/shifts` | `SHIFT_WRITE` |
+| GET | `/shifts`, `/shifts/{id}` | `SHIFT_READ` |
+| PUT | `/shifts/{id}` | `SHIFT_WRITE` |
+| POST | `/shifts/{id}/swap-requests` | `SWAP_REQUEST_SELF` (requester) or `SWAP_REQUEST_ANY` |
+| GET | `/swap-requests/{id}` | `SWAP_REQUEST_SELF` (requester or target) or `SWAP_REQUEST_ANY` |
+| PUT | `/swap-requests/{id}` | Route open to `SWAP_REQUEST_SELF`/`SWAP_REQUEST_ANY`; service enforces that only the swap's real `target` may approve/reject |
+| DELETE | `/swap-requests/{id}` | `SWAP_REQUEST_SELF` (requester) or `SWAP_REQUEST_ANY` |
+| POST | `/time-off-requests` | `TIME_OFF_SELF` (own id) or `TIME_OFF_ANY` |
+| GET | `/time-off-requests` (list all) | `TIME_OFF_ANY` |
+| GET | `/time-off-requests?employeeId=` | `TIME_OFF_SELF` (own id) or `TIME_OFF_ANY` |
+| GET | `/time-off-requests/{id}` | `TIME_OFF_SELF` (own id) or `TIME_OFF_ANY` |
+| PUT | `/time-off-requests/{id}` | `TIME_OFF_REVIEW` (approve/reject) |
+| DELETE | `/time-off-requests/{id}` | `TIME_OFF_SELF` (own id) or `TIME_OFF_ANY` |
+| POST | `/availabilities` | `AVAILABILITY_SELF` (own id) or `AVAILABILITY_ANY` |
+| GET | `/availabilities` (list all) | `AVAILABILITY_ANY` |
+| GET | `/availabilities?employeeId=`, `/availabilities/{id}` | `AVAILABILITY_SELF` (own id) or `AVAILABILITY_ANY` |
+| PUT | `/availabilities/{id}` | `AVAILABILITY_SELF` (own id) or `AVAILABILITY_ANY` |
+| DELETE | `/availabilities/{id}` | `AVAILABILITY_SELF` (own id) or `AVAILABILITY_ANY` |
+
+All routes above except `/auth/login` also require a valid, non-expired JWT (`Authorization: Bearer <token>`).
 
 ## Running locally
 
@@ -339,11 +335,4 @@ docker compose up -d          # starts Postgres (roster_db, postgres/postgres, p
 ./mvnw spring-boot:run        # applies Flyway migrations automatically and starts the app
 ```
 
-The API comes up at `http://localhost:8080`. Swagger UI at `/swagger-ui.html`, OpenAPI spec at `/v3/api-docs`.
-
-## Known limitations
-
-- **Seed passwords are placeholders**: the employees seeded in V2 have dummy `password_hash` values, so nobody can log in on a fresh database. Set a real BCrypt hash for a `MANAGER` employee directly in the database to bootstrap.
-- **In-memory RSA key**: restarting the app invalidates all issued tokens.
-- **No automatic unlock**: an account locked after 3 failed logins stays locked; `lock_time` is recorded but not used yet.
-- **Permission changes are not immediate**: they apply at the user's next login (tokens last 1 hour).
+The API comes up at `http://localhost:8080`. Swagger UI at `/swagger-ui.html`, OpenAPI spec at `/v3/api-docs`. Actuator health at `/actuator/health`.
