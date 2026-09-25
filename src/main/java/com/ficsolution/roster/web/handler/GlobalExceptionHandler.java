@@ -1,4 +1,7 @@
-package com.ficsolution.roster.exception;
+package com.ficsolution.roster.web.handler;
+
+import com.ficsolution.roster.exception.ObjectConflictException;
+import com.ficsolution.roster.exception.ObjectNotFoundException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

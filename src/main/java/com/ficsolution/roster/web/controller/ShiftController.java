@@ -2,7 +2,7 @@ package com.ficsolution.roster.web.controller;
 
 import com.ficsolution.roster.model.Shift;
 import com.ficsolution.roster.service.ShiftService;
-import com.ficsolution.roster.specification.ShiftSpecification;
+import com.ficsolution.roster.repository.specification.ShiftSpecification;
 import com.ficsolution.roster.web.dto.common.PagedResponse;
 import com.ficsolution.roster.web.dto.shift.CreateShiftRequest;
 import com.ficsolution.roster.web.dto.shift.ShiftFilter;

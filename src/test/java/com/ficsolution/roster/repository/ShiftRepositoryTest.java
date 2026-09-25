@@ -2,7 +2,7 @@ package com.ficsolution.roster.repository;
 
 import com.ficsolution.roster.model.Shift;
 import com.ficsolution.roster.model.enums.ShiftStatus;
-import com.ficsolution.roster.specification.ShiftSpecification;
+import com.ficsolution.roster.repository.specification.ShiftSpecification;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;

@@ -1,4 +1,4 @@
-package com.ficsolution.roster.specification;
+package com.ficsolution.roster.repository.specification;
 
 import com.ficsolution.roster.model.Shift;
 import org.springframework.data.jpa.domain.Specification;

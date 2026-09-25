@@ -4,7 +4,7 @@ import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.security.Permissions;
 import com.ficsolution.roster.security.SecurityUtil;
 import com.ficsolution.roster.service.EmployeeService;
-import com.ficsolution.roster.specification.EmployeeSpecification;
+import com.ficsolution.roster.repository.specification.EmployeeSpecification;
 import com.ficsolution.roster.web.dto.employee.EmployeeFilter;
 import com.ficsolution.roster.web.dto.employee.ChangePasswordRequest;
 import com.ficsolution.roster.web.dto.employee.CreateEmployeeRequest;
