@@ -1,6 +1,7 @@
 package com.ficsolution.roster.web.controller;
 
 import com.ficsolution.roster.model.TimeOffRequest;
+import com.ficsolution.roster.security.Permissions;
 import com.ficsolution.roster.security.SecurityUtil;
 import com.ficsolution.roster.service.TimeOffRequestService;
 import com.ficsolution.roster.web.dto.timeoff.CreateTimeOffRequest;
@@ -24,7 +25,7 @@ public class TimeOffRequestController {
 
     @PostMapping
     public ResponseEntity<TimeOffRequestResponse> createTimeOffRequest(@Valid @RequestBody CreateTimeOffRequest createTimeOffRequest) {
-        SecurityUtil.requireOwnershipOrRole(createTimeOffRequest.employeeId(), "MANAGER", "SUPERVISOR");
+        SecurityUtil.requireOwnershipOrPermission(createTimeOffRequest.employeeId(), Permissions.TIME_OFF_ANY);
         TimeOffRequest timeOffRequest = timeOffRequestService.createTimeOffRequest(createTimeOffRequest.toEntity());
         TimeOffRequestResponse response = TimeOffRequestResponse.from(timeOffRequest);
         return ResponseEntity.created(URI.create(String.format("/time-off-requests/%s", response.id()))).body(response);
@@ -32,7 +33,7 @@ public class TimeOffRequestController {
 
     @GetMapping
     public ResponseEntity<List<TimeOffRequestResponse>> retrieveAllTimeOffRequests() {
-        SecurityUtil.requireRole("MANAGER", "SUPERVISOR");
+        SecurityUtil.requirePermission(Permissions.TIME_OFF_ANY);
         List<TimeOffRequestResponse> responses = timeOffRequestService.findAllTimeOffRequests().stream()
                 .map(TimeOffRequestResponse::from)
                 .toList();
@@ -41,7 +42,7 @@ public class TimeOffRequestController {
 
     @GetMapping(params = "employeeId")
     public ResponseEntity<List<TimeOffRequestResponse>> retrieveTimeOffRequestsByEmployeeId(@RequestParam UUID employeeId) {
-        SecurityUtil.requireOwnershipOrRole(employeeId, "MANAGER", "SUPERVISOR");
+        SecurityUtil.requireOwnershipOrPermission(employeeId, Permissions.TIME_OFF_ANY);
         List<TimeOffRequestResponse> responses = timeOffRequestService.retrieveAllTimeOffRequestsByEmployeeId(employeeId).stream()
                 .map(TimeOffRequestResponse::from)
                 .toList();
@@ -51,7 +52,7 @@ public class TimeOffRequestController {
     @GetMapping("/{id}")
     public ResponseEntity<TimeOffRequestResponse> retrieveTimeOffRequestById(@PathVariable UUID id) {
         TimeOffRequest timeOffRequest = timeOffRequestService.retrieveTimeOffRequestById(id);
-        SecurityUtil.requireOwnershipOrRole(timeOffRequest.getEmployee().getId(), "MANAGER", "SUPERVISOR");
+        SecurityUtil.requireOwnershipOrPermission(timeOffRequest.getEmployee().getId(), Permissions.TIME_OFF_ANY);
         return ResponseEntity.ok(TimeOffRequestResponse.from(timeOffRequest));
     }
 
@@ -64,7 +65,7 @@ public class TimeOffRequestController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteTimeOffRequest(@PathVariable UUID id) {
         TimeOffRequest existing = timeOffRequestService.retrieveTimeOffRequestById(id);
-        SecurityUtil.requireOwnershipOrRole(existing.getEmployee().getId(), "MANAGER", "SUPERVISOR");
+        SecurityUtil.requireOwnershipOrPermission(existing.getEmployee().getId(), Permissions.TIME_OFF_ANY);
         timeOffRequestService.deleteTimeOffRequest(id);
         return ResponseEntity.noContent().build();
     }

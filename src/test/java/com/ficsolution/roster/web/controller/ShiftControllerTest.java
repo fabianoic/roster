@@ -9,6 +9,7 @@ import com.ficsolution.roster.model.Shift;
 import com.ficsolution.roster.model.Store;
 import com.ficsolution.roster.model.enumModel.EmployeeStatus;
 import com.ficsolution.roster.model.enumModel.ShiftStatus;
+import com.ficsolution.roster.security.Permissions;
 import com.ficsolution.roster.service.ShiftService;
 import com.ficsolution.roster.util.Util;
 import com.ficsolution.roster.web.dto.shift.CreateShiftRequest;
@@ -37,6 +38,7 @@ import java.util.UUID;
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -117,6 +119,44 @@ public class ShiftControllerTest {
                         .content(mapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(id.toString()));
+    }
+
+    @Test
+    void mustCreateAShiftWithOnlyShiftWritePermission() throws Exception {
+        UUID employeeId = UUID.randomUUID();
+        UUID storeId = UUID.randomUUID();
+        Shift created = Shift.builder()
+                .id(UUID.randomUUID())
+                .employee(Employee.builder().id(employeeId).role(Role.builder().id(UUID.randomUUID()).build()).build())
+                .store(Store.builder().id(storeId).build())
+                .shiftDate(LocalDate.now())
+                .startTime(LocalTime.of(8, 0))
+                .endTime(LocalTime.of(16, 0))
+                .status(ShiftStatus.SCHEDULED)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+        CreateShiftRequest request = new CreateShiftRequest(
+                employeeId, storeId, LocalDate.now(), LocalTime.of(8, 0), LocalTime.of(16, 0));
+        given(shiftService.createShift(any(Shift.class))).willReturn(created);
+
+        mockMvc.perform(post(path)
+                        .with(jwt().authorities(Util.authorities(Permissions.SHIFT_WRITE)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void mustReturn403WhenCreatingShiftWithoutShiftWritePermission() throws Exception {
+        CreateShiftRequest request = new CreateShiftRequest(
+                UUID.randomUUID(), UUID.randomUUID(), LocalDate.now(), LocalTime.of(8, 0), LocalTime.of(16, 0));
+
+        mockMvc.perform(post(path)
+                        .with(jwt().authorities(Util.authorities(Permissions.SHIFT_READ)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden());
     }
 
     @Test

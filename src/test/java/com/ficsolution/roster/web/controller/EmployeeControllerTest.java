@@ -193,7 +193,7 @@ public class EmployeeControllerTest {
 
         given(employeeService.changeEmployeePassword(id, changePasswordRequest)).willReturn(employee);
 
-        mockMvc.perform(put(String.format("%s/%s/changepassword", path, id))
+        mockMvc.perform(put(String.format("%s/%s/change-password", path, id))
                         .with(Util.authority)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(changePasswordRequest)))
@@ -214,7 +214,7 @@ public class EmployeeControllerTest {
 
         given(employeeService.changeEmployeePassword(id, changePasswordRequest)).willReturn(employee);
 
-        mockMvc.perform(put(String.format("%s/%s/changepassword", path, id))
+        mockMvc.perform(put(String.format("%s/%s/change-password", path, id))
                         .with(Util.authority)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(changePasswordRequest)))
@@ -347,7 +347,7 @@ public class EmployeeControllerTest {
                 .build();
         given(employeeService.changeEmployeePassword(Util.employeeId, changePasswordRequest)).willReturn(employee);
 
-        mockMvc.perform(put(String.format("%s/%s/changepassword", path, Util.employeeId))
+        mockMvc.perform(put(String.format("%s/%s/change-password", path, Util.employeeId))
                         .with(Util.staffAuthority)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(changePasswordRequest)))
@@ -358,7 +358,7 @@ public class EmployeeControllerTest {
     void mustReturn403WhenStaffChangesAnotherEmployeePassword() throws Exception {
         ChangePasswordRequest changePasswordRequest = new ChangePasswordRequest("OLDPASSWORDSAVED", "NEWPASSOWRDTOSAVE");
 
-        mockMvc.perform(put(String.format("%s/%s/changepassword", path, Util.employeeId))
+        mockMvc.perform(put(String.format("%s/%s/change-password", path, Util.employeeId))
                         .with(Util.staffOtherAuthority)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(changePasswordRequest)))
@@ -369,7 +369,7 @@ public class EmployeeControllerTest {
     void mustReturn403WhenSupervisorChangesAnotherEmployeePassword() throws Exception {
         ChangePasswordRequest changePasswordRequest = new ChangePasswordRequest("OLDPASSWORDSAVED", "NEWPASSOWRDTOSAVE");
 
-        mockMvc.perform(put(String.format("%s/%s/changepassword", path, Util.employee1Id))
+        mockMvc.perform(put(String.format("%s/%s/change-password", path, Util.employee1Id))
                         .with(Util.supervisorAuthority)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(changePasswordRequest)))
@@ -388,7 +388,7 @@ public class EmployeeControllerTest {
                 .build();
         given(employeeService.changeEmployeePassword(Util.employee1Id, changePasswordRequest)).willReturn(employee);
 
-        mockMvc.perform(put(String.format("%s/%s/changepassword", path, Util.employee1Id))
+        mockMvc.perform(put(String.format("%s/%s/change-password", path, Util.employee1Id))
                         .with(Util.authority)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(changePasswordRequest)))

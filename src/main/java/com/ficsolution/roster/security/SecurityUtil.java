@@ -9,7 +9,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 public final class SecurityUtil {
 
@@ -20,21 +19,21 @@ public final class SecurityUtil {
         return UUID.fromString(currentAuthentication().getName());
     }
 
-    public static boolean hasAnyRole(String... roles) {
-        Set<String> required = Arrays.stream(roles).map(role -> "ROLE_" + role).collect(Collectors.toSet());
+    public static boolean hasAnyPermission(String... permissions) {
+        Set<String> required = Set.of(permissions);
         return currentAuthentication().getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .anyMatch(required::contains);
     }
 
-    public static void requireRole(String... roles) {
-        if (!hasAnyRole(roles)) {
-            throw new AccessDeniedException("Requires one of roles: " + Arrays.toString(roles));
+    public static void requirePermission(String... permissions) {
+        if (!hasAnyPermission(permissions)) {
+            throw new AccessDeniedException("Requires one of permissions: " + Arrays.toString(permissions));
         }
     }
 
-    public static void requireOwnershipOrRole(UUID ownerId, String... bypassRoles) {
-        if (hasAnyRole(bypassRoles)) {
+    public static void requireOwnershipOrPermission(UUID ownerId, String... bypassPermissions) {
+        if (hasAnyPermission(bypassPermissions)) {
             return;
         }
         if (!currentEmployeeId().equals(ownerId)) {
@@ -42,8 +41,8 @@ public final class SecurityUtil {
         }
     }
 
-    public static void requireOwnershipOrRole(Collection<UUID> acceptableOwnerIds, String... bypassRoles) {
-        if (hasAnyRole(bypassRoles)) {
+    public static void requireOwnershipOrPermission(Collection<UUID> acceptableOwnerIds, String... bypassPermissions) {
+        if (hasAnyPermission(bypassPermissions)) {
             return;
         }
         if (!acceptableOwnerIds.contains(currentEmployeeId())) {

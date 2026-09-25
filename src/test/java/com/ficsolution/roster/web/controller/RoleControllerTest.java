@@ -4,9 +4,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ficsolution.roster.config.JwtConfig;
 import com.ficsolution.roster.config.SecurityConfig;
 import com.ficsolution.roster.exception.ObjectNotFoundException;
+import com.ficsolution.roster.model.Permission;
 import com.ficsolution.roster.model.Role;
 import com.ficsolution.roster.service.RoleService;
 import com.ficsolution.roster.util.Util;
+import com.ficsolution.roster.web.dto.permission.RolePermissionsRequest;
 import com.ficsolution.roster.web.dto.role.RoleRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,8 +18,11 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
@@ -94,6 +99,75 @@ public class RoleControllerTest {
     @Test
     void mustReturn403WhenStaffListsRoles() throws Exception {
         mockMvc.perform(get("/roles")
+                        .with(Util.staffAuthority))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void mustRetrieveRolePermissions() throws Exception {
+        UUID id = UUID.randomUUID();
+        Permission permission = new Permission(UUID.randomUUID(), "SHIFT_READ", "View shifts");
+        given(roleService.retrievePermissions(id)).willReturn(List.of(permission));
+
+        mockMvc.perform(get("/roles/{id}/permissions", id)
+                        .with(Util.authority))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].name").value("SHIFT_READ"))
+                .andExpect(jsonPath("$[0].description").value("View shifts"));
+    }
+
+    @Test
+    void mustReplaceRolePermissions() throws Exception {
+        UUID id = UUID.randomUUID();
+        Set<String> names = Set.of("SHIFT_READ", "SHIFT_WRITE");
+        given(roleService.replacePermissions(id, names)).willReturn(List.of(
+                new Permission(UUID.randomUUID(), "SHIFT_READ", null),
+                new Permission(UUID.randomUUID(), "SHIFT_WRITE", null)));
+
+        mockMvc.perform(put("/roles/{id}/permissions", id)
+                        .with(Util.authority)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(new RolePermissionsRequest(names))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)));
+
+        then(roleService).should().replacePermissions(id, names);
+    }
+
+    @Test
+    void mustReturn404WhenReplacingWithUnknownPermission() throws Exception {
+        UUID id = UUID.randomUUID();
+        Set<String> names = Set.of("UNKNOWN");
+        given(roleService.replacePermissions(id, names)).willThrow(new ObjectNotFoundException("Permission", "UNKNOWN"));
+
+        mockMvc.perform(put("/roles/{id}/permissions", id)
+                        .with(Util.authority)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(new RolePermissionsRequest(names))))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void mustReturn400WhenPermissionsIsNull() throws Exception {
+        mockMvc.perform(put("/roles/{id}/permissions", UUID.randomUUID())
+                        .with(Util.authority)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void mustReturn403WhenSupervisorReplacesRolePermissions() throws Exception {
+        mockMvc.perform(put("/roles/{id}/permissions", UUID.randomUUID())
+                        .with(Util.supervisorAuthority)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(new RolePermissionsRequest(Set.of("ROLE_MANAGE")))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void mustReturn403WhenStaffRetrievesRolePermissions() throws Exception {
+        mockMvc.perform(get("/roles/{id}/permissions", UUID.randomUUID())
                         .with(Util.staffAuthority))
                 .andExpect(status().isForbidden());
     }

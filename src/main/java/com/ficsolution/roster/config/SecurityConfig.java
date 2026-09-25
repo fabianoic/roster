@@ -14,6 +14,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.SecurityFilterChain;
 
+import static com.ficsolution.roster.security.Permissions.*;
+
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
@@ -36,49 +38,49 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/login", "/v3/api-docs/**", "/swagger-ui/**").permitAll()
 
-                        // Roles: only MANAGER
-                        .requestMatchers("/roles/**").hasRole("MANAGER")
+                        // Roles and permissions management
+                        .requestMatchers("/roles/**", "/permissions/**").hasAuthority(ROLE_MANAGE)
 
-                        // Stores: read for everyone, write only MANAGER
-                        .requestMatchers(HttpMethod.GET, "/stores", "/stores/*").hasAnyRole("MANAGER", "SUPERVISOR", "STAFF")
-                        .requestMatchers(HttpMethod.POST, "/stores").hasRole("MANAGER")
-                        .requestMatchers(HttpMethod.PUT, "/stores/*").hasRole("MANAGER")
-                        .requestMatchers(HttpMethod.DELETE, "/stores/*").hasRole("MANAGER")
+                        // Stores
+                        .requestMatchers(HttpMethod.GET, "/stores", "/stores/*").hasAuthority(STORE_READ)
+                        .requestMatchers(HttpMethod.POST, "/stores").hasAuthority(STORE_WRITE)
+                        .requestMatchers(HttpMethod.PUT, "/stores/*").hasAuthority(STORE_WRITE)
+                        .requestMatchers(HttpMethod.DELETE, "/stores/*").hasAuthority(STORE_WRITE)
 
-                        // Employees
-                        .requestMatchers(HttpMethod.POST, "/employees").hasRole("MANAGER")
-                        .requestMatchers(HttpMethod.PUT, "/employees/*/change-status").hasRole("MANAGER")
-                        .requestMatchers(HttpMethod.PUT, "/employees/*/change-password").hasAnyRole("MANAGER", "SUPERVISOR", "STAFF")
-                        .requestMatchers(HttpMethod.PUT, "/employees/*").hasRole("MANAGER")
-                        .requestMatchers(HttpMethod.GET, "/employees/*").hasAnyRole("MANAGER", "SUPERVISOR", "STAFF")
-                        .requestMatchers(HttpMethod.GET, "/employees").hasAnyRole("MANAGER", "SUPERVISOR")
+                        // Employees: "_SELF" gates the URL, ownership vs "_ANY" is checked in the controller
+                        .requestMatchers(HttpMethod.POST, "/employees").hasAuthority(EMPLOYEE_WRITE)
+                        .requestMatchers(HttpMethod.PUT, "/employees/*/change-status").hasAuthority(EMPLOYEE_WRITE)
+                        .requestMatchers(HttpMethod.PUT, "/employees/*/change-password").hasAnyAuthority(EMPLOYEE_PASSWORD_SELF, EMPLOYEE_PASSWORD_ANY)
+                        .requestMatchers(HttpMethod.PUT, "/employees/*").hasAuthority(EMPLOYEE_WRITE)
+                        .requestMatchers(HttpMethod.GET, "/employees/*").hasAnyAuthority(EMPLOYEE_READ_SELF, EMPLOYEE_READ_ANY)
+                        .requestMatchers(HttpMethod.GET, "/employees").hasAuthority(EMPLOYEE_READ_ANY)
 
-                        // Shifts: write MANAGER/SUPERVISOR, read shared by everyone
-                        .requestMatchers(HttpMethod.POST, "/shifts").hasAnyRole("MANAGER", "SUPERVISOR")
-                        .requestMatchers(HttpMethod.PUT, "/shifts/*").hasAnyRole("MANAGER", "SUPERVISOR")
-                        .requestMatchers(HttpMethod.GET, "/shifts", "/shifts/*").hasAnyRole("MANAGER", "SUPERVISOR", "STAFF")
+                        // Shifts
+                        .requestMatchers(HttpMethod.POST, "/shifts").hasAuthority(SHIFT_WRITE)
+                        .requestMatchers(HttpMethod.PUT, "/shifts/*").hasAuthority(SHIFT_WRITE)
+                        .requestMatchers(HttpMethod.GET, "/shifts", "/shifts/*").hasAuthority(SHIFT_READ)
 
-                        // Shift swap requests: gate allows everyone, ownership is checked in the controller
-                        .requestMatchers(HttpMethod.POST, "/shifts/*/swap-requests").hasAnyRole("MANAGER", "SUPERVISOR", "STAFF")
-                        .requestMatchers(HttpMethod.PUT, "/swap-requests/*").hasAnyRole("MANAGER", "SUPERVISOR", "STAFF")
-                        .requestMatchers(HttpMethod.GET, "/swap-requests/*").hasAnyRole("MANAGER", "SUPERVISOR", "STAFF")
-                        .requestMatchers(HttpMethod.DELETE, "/swap-requests/*").hasAnyRole("MANAGER", "SUPERVISOR", "STAFF")
+                        // Shift swap requests
+                        .requestMatchers(HttpMethod.POST, "/shifts/*/swap-requests").hasAnyAuthority(SWAP_REQUEST_SELF, SWAP_REQUEST_ANY)
+                        .requestMatchers(HttpMethod.PUT, "/swap-requests/*").hasAnyAuthority(SWAP_REQUEST_SELF, SWAP_REQUEST_ANY)
+                        .requestMatchers(HttpMethod.GET, "/swap-requests/*").hasAnyAuthority(SWAP_REQUEST_SELF, SWAP_REQUEST_ANY)
+                        .requestMatchers(HttpMethod.DELETE, "/swap-requests/*").hasAnyAuthority(SWAP_REQUEST_SELF, SWAP_REQUEST_ANY)
 
                         // Time off requests
-                        .requestMatchers(HttpMethod.POST, "/time-off-requests").hasAnyRole("MANAGER", "SUPERVISOR", "STAFF")
-                        .requestMatchers(HttpMethod.GET, "/time-off-requests").hasAnyRole("MANAGER", "SUPERVISOR", "STAFF")
-                        .requestMatchers(HttpMethod.GET, "/time-off-requests/*").hasAnyRole("MANAGER", "SUPERVISOR", "STAFF")
-                        .requestMatchers(HttpMethod.PUT, "/time-off-requests/*").hasAnyRole("MANAGER", "SUPERVISOR")
-                        .requestMatchers(HttpMethod.DELETE, "/time-off-requests/*").hasAnyRole("MANAGER", "SUPERVISOR", "STAFF")
+                        .requestMatchers(HttpMethod.POST, "/time-off-requests").hasAnyAuthority(TIME_OFF_SELF, TIME_OFF_ANY)
+                        .requestMatchers(HttpMethod.GET, "/time-off-requests").hasAnyAuthority(TIME_OFF_SELF, TIME_OFF_ANY)
+                        .requestMatchers(HttpMethod.GET, "/time-off-requests/*").hasAnyAuthority(TIME_OFF_SELF, TIME_OFF_ANY)
+                        .requestMatchers(HttpMethod.PUT, "/time-off-requests/*").hasAuthority(TIME_OFF_REVIEW)
+                        .requestMatchers(HttpMethod.DELETE, "/time-off-requests/*").hasAnyAuthority(TIME_OFF_SELF, TIME_OFF_ANY)
 
                         // Availabilities
-                        .requestMatchers(HttpMethod.POST, "/availabilities").hasAnyRole("MANAGER", "SUPERVISOR", "STAFF")
-                        .requestMatchers(HttpMethod.GET, "/availabilities").hasAnyRole("MANAGER", "SUPERVISOR", "STAFF")
-                        .requestMatchers(HttpMethod.GET, "/availabilities/*").hasAnyRole("MANAGER", "SUPERVISOR", "STAFF")
-                        .requestMatchers(HttpMethod.PUT, "/availabilities/*").hasAnyRole("MANAGER", "SUPERVISOR", "STAFF")
-                        .requestMatchers(HttpMethod.DELETE, "/availabilities/*").hasAnyRole("MANAGER", "SUPERVISOR", "STAFF")
+                        .requestMatchers(HttpMethod.POST, "/availabilities").hasAnyAuthority(AVAILABILITY_SELF, AVAILABILITY_ANY)
+                        .requestMatchers(HttpMethod.GET, "/availabilities").hasAnyAuthority(AVAILABILITY_SELF, AVAILABILITY_ANY)
+                        .requestMatchers(HttpMethod.GET, "/availabilities/*").hasAnyAuthority(AVAILABILITY_SELF, AVAILABILITY_ANY)
+                        .requestMatchers(HttpMethod.PUT, "/availabilities/*").hasAnyAuthority(AVAILABILITY_SELF, AVAILABILITY_ANY)
+                        .requestMatchers(HttpMethod.DELETE, "/availabilities/*").hasAnyAuthority(AVAILABILITY_SELF, AVAILABILITY_ANY)
 
-                        .anyRequest().hasRole("MANAGER"))
+                        .anyRequest().hasAuthority(ROLE_MANAGE))
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(converter)));
 
         return http.build();

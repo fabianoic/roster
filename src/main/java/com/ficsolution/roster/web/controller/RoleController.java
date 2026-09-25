@@ -2,6 +2,8 @@ package com.ficsolution.roster.web.controller;
 
 import com.ficsolution.roster.model.Role;
 import com.ficsolution.roster.service.RoleService;
+import com.ficsolution.roster.web.dto.permission.PermissionResponse;
+import com.ficsolution.roster.web.dto.permission.RolePermissionsRequest;
 import com.ficsolution.roster.web.dto.role.RoleRequest;
 import com.ficsolution.roster.web.dto.role.RoleResponse;
 import jakarta.validation.Valid;
@@ -49,5 +51,21 @@ public class RoleController {
     public ResponseEntity<Void> deleteRole(@PathVariable UUID id) {
         roleService.deleteRole(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}/permissions")
+    public ResponseEntity<List<PermissionResponse>> retrieveRolePermissions(@PathVariable UUID id) {
+        List<PermissionResponse> responses = roleService.retrievePermissions(id).stream()
+                .map(PermissionResponse::from)
+                .toList();
+        return ResponseEntity.ok(responses);
+    }
+
+    @PutMapping("/{id}/permissions")
+    public ResponseEntity<List<PermissionResponse>> replaceRolePermissions(@PathVariable UUID id, @Valid @RequestBody RolePermissionsRequest request) {
+        List<PermissionResponse> responses = roleService.replacePermissions(id, request.permissions()).stream()
+                .map(PermissionResponse::from)
+                .toList();
+        return ResponseEntity.ok(responses);
     }
 }

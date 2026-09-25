@@ -39,7 +39,8 @@ public class AuthController {
         JwtClaimsSet jwtClaimsSet = JwtClaimsSet.builder()
                 .subject(employee.getId().toString())
                 .claim("email", employee.getUsername())
-                .claim("roles", List.of(employee.getRoleName()))
+                .claim("role", employee.getRoleName())
+                .claim("permissions", List.copyOf(employee.getPermissions()))
                 .issuedAt(Instant.now())
                 .expiresAt(Instant.now().plusSeconds(EXPIRATION_SECONDS))
                 .build();

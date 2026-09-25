@@ -1,6 +1,7 @@
 package com.ficsolution.roster.web.controller;
 
 import com.ficsolution.roster.model.Availability;
+import com.ficsolution.roster.security.Permissions;
 import com.ficsolution.roster.security.SecurityUtil;
 import com.ficsolution.roster.service.AvailabilityService;
 import com.ficsolution.roster.web.dto.availability.AvailabilityResponse;
@@ -24,7 +25,7 @@ public class AvailabilityController {
 
     @PostMapping
     public ResponseEntity<AvailabilityResponse> createAvailability(@Valid @RequestBody CreateAvailabilityRequest createAvailabilityRequest) {
-        SecurityUtil.requireOwnershipOrRole(createAvailabilityRequest.employeeId(), "MANAGER", "SUPERVISOR");
+        SecurityUtil.requireOwnershipOrPermission(createAvailabilityRequest.employeeId(), Permissions.AVAILABILITY_ANY);
         Availability availability = availabilityService.createAvailability(createAvailabilityRequest.toEntity());
         AvailabilityResponse response = AvailabilityResponse.from(availability);
         return ResponseEntity.created(URI.create(String.format("/availabilities/%s", response.id()))).body(response);
@@ -32,7 +33,7 @@ public class AvailabilityController {
 
     @GetMapping
     public ResponseEntity<List<AvailabilityResponse>> retrieveAllAvailabilities() {
-        SecurityUtil.requireRole("MANAGER", "SUPERVISOR");
+        SecurityUtil.requirePermission(Permissions.AVAILABILITY_ANY);
         List<AvailabilityResponse> responses = availabilityService.findAllAvailabilities().stream()
                 .map(AvailabilityResponse::from)
                 .toList();
@@ -41,7 +42,7 @@ public class AvailabilityController {
 
     @GetMapping(params = "employeeId")
     public ResponseEntity<List<AvailabilityResponse>> retrieveAvailabilitiesByEmployeeId(@RequestParam UUID employeeId) {
-        SecurityUtil.requireOwnershipOrRole(employeeId, "MANAGER", "SUPERVISOR");
+        SecurityUtil.requireOwnershipOrPermission(employeeId, Permissions.AVAILABILITY_ANY);
         List<AvailabilityResponse> responses = availabilityService.retrieveAllAvailabilityByEmployeeId(employeeId).stream()
                 .map(AvailabilityResponse::from)
                 .toList();
@@ -51,14 +52,14 @@ public class AvailabilityController {
     @GetMapping("/{id}")
     public ResponseEntity<AvailabilityResponse> retrieveAvailabilityById(@PathVariable UUID id) {
         Availability availability = availabilityService.retrieveAvailabilityById(id);
-        SecurityUtil.requireOwnershipOrRole(availability.getEmployee().getId(), "MANAGER", "SUPERVISOR");
+        SecurityUtil.requireOwnershipOrPermission(availability.getEmployee().getId(), Permissions.AVAILABILITY_ANY);
         return ResponseEntity.ok(AvailabilityResponse.from(availability));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<AvailabilityResponse> updateAvailability(@PathVariable UUID id, @Valid @RequestBody UpdateAvailabilityRequest updateAvailabilityRequest) {
         Availability existing = availabilityService.retrieveAvailabilityById(id);
-        SecurityUtil.requireOwnershipOrRole(existing.getEmployee().getId(), "MANAGER", "SUPERVISOR");
+        SecurityUtil.requireOwnershipOrPermission(existing.getEmployee().getId(), Permissions.AVAILABILITY_ANY);
         Availability availability = availabilityService.updateAvailability(id, updateAvailabilityRequest.toEntity());
         return ResponseEntity.ok(AvailabilityResponse.from(availability));
     }
@@ -66,7 +67,7 @@ public class AvailabilityController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteAvailability(@PathVariable UUID id) {
         Availability existing = availabilityService.retrieveAvailabilityById(id);
-        SecurityUtil.requireOwnershipOrRole(existing.getEmployee().getId(), "MANAGER", "SUPERVISOR");
+        SecurityUtil.requireOwnershipOrPermission(existing.getEmployee().getId(), Permissions.AVAILABILITY_ANY);
         availabilityService.deleteAvailability(id);
         return ResponseEntity.noContent().build();
     }
