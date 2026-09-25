@@ -32,8 +32,8 @@ public class ShiftSwapRequestController {
 
     @PutMapping("/swap-requests/{id}")
     public ResponseEntity<ShiftSwapResponse> updateShiftSwapRequest(@PathVariable UUID id, @Valid @RequestBody UpdateShiftSwap updateShiftSwap) {
-        SecurityUtil.requireOwnershipOrPermission(updateShiftSwap.targetId(), Permissions.SWAP_REQUEST_ANY);
-        ShiftSwapRequest shiftSwapRequest = shiftSwapRequestService.changeStatus(id, updateShiftSwap.targetId(), updateShiftSwap.status());
+        // Only the target may accept/reject; the service validates it against the logged employee
+        ShiftSwapRequest shiftSwapRequest = shiftSwapRequestService.changeStatus(id, SecurityUtil.currentEmployeeId(), updateShiftSwap.status());
         return ResponseEntity.ok(ShiftSwapResponse.from(shiftSwapRequest));
     }
 

@@ -8,6 +8,7 @@ import com.ficsolution.roster.model.ShiftSwapRequest;
 import com.ficsolution.roster.model.enumModel.RequestStatus;
 import com.ficsolution.roster.repository.ShiftSwapRequestRepository;
 import lombok.AllArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -58,8 +59,11 @@ public class ShiftSwapRequestService {
     public ShiftSwapRequest changeStatus(UUID shiftSwapRequestId, UUID employeeId, RequestStatus status) {
         ShiftSwapRequest shiftSwapRequest = retrieveShiftSwapRequestById(shiftSwapRequestId);
 
-        if (!shiftSwapRequest.getTarget().getId().equals(employeeId) ||
-            !shiftSwapRequest.getStatus().equals(RequestStatus.PENDING)) {
+        if (!shiftSwapRequest.getTarget().getId().equals(employeeId)) {
+            throw new AccessDeniedException("Only the target employee can change the status of this swap request.");
+        }
+
+        if (!shiftSwapRequest.getStatus().equals(RequestStatus.PENDING)) {
             throw new ObjectConflictException("status", "Change status failed, action not allowed!");
         }
 
