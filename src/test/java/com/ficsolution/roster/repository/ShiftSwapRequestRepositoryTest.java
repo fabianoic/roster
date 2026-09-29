@@ -7,7 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.context.annotation.Import;
-import org.testcontainers.utility.TestcontainersConfiguration;
+import com.ficsolution.roster.TestcontainersConfiguration;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -64,7 +64,7 @@ public class ShiftSwapRequestRepositoryTest {
         assertFalse(retrievedShift.isEmpty());
         assertEquals(RequestStatus.PENDING, retrievedShift.get().getStatus());
         assertEquals(UUID.fromString("8d7ec490-9fdc-4a5f-b261-82e53bc74d7f"), retrievedShift.get().getRequester().getId());
-        assertEquals(UUID.fromString("7f491384-efd0-43de-ab12-82d1aaf11072"), retrievedShift.get().getTarget().getId());
+        assertEquals("diego.rocha@empresa.com", retrievedShift.get().getTarget().getEmail());
     }
 
     @Test

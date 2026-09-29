@@ -13,7 +13,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
-import org.testcontainers.utility.TestcontainersConfiguration;
+import com.ficsolution.roster.TestcontainersConfiguration;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
