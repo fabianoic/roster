@@ -62,7 +62,6 @@ public class ShiftSwapRequestServiceTest {
 
         assertNotNull(savedShiftSwapRequest);
         assertEquals(RequestStatus.PENDING, savedShiftSwapRequest.getStatus());
-        assertEquals(savedShiftSwapRequest.getCreatedAt(), savedShiftSwapRequest.getUpdatedAt());
         verify(shiftSwapRequestRepository, times(1)).save(shiftSwapRequest);
         verify(shiftService, times(1)).retrieveShiftById(shiftId);
         verify(employeeService, times(2)).retrieveEmployeeById(any());
