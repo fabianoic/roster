@@ -5,6 +5,8 @@ import com.ficsolution.roster.model.Availability;
 import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.repository.AvailabilityRepository;
 import lombok.AllArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,9 +19,11 @@ public class AvailabilityService {
 
     private final AvailabilityRepository availabilityRepository;
     private final EmployeeService employeeService;
+    private final Logger logger = LoggerFactory.getLogger(AvailabilityService.class);
 
     @Transactional
     public Availability createAvailability(Availability availability) {
+        logger.info("Start creating availability method");
         Employee employee = employeeService.retrieveEmployeeById(availability.getEmployee().getId());
 
         availability.setEmployee(employee);
