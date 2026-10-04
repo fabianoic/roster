@@ -305,27 +305,6 @@ This starts two containers: `roster-postgres` (PostgreSQL 16, database `roster_d
 | OpenAPI spec | `http://localhost:8080/v3/api-docs` (public) |
 | Health | `http://localhost:8080/actuator/health` (requires a token with `ROLE_MANAGE`) |
 
-### First login
-
-The employees seeded by `V2__seed_tables.sql` carry placeholder password hashes, so none of them can log in as shipped. Set a real BCrypt hash for the seeded manager once:
-
-```bash
-docker compose exec postgres psql -U postgres -d roster_db -c \
-  "CREATE EXTENSION IF NOT EXISTS pgcrypto; \
-   UPDATE employee SET password_hash = crypt('local-dev-password', gen_salt('bf', 10)) \
-   WHERE email = 'ana.silva@empresa.com';"
-```
-
-Then request a token:
-
-```bash
-curl -X POST http://localhost:8080/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email": "ana.silva@empresa.com", "password": "local-dev-password"}'
-```
-
-Use the returned `token` in Swagger UI (**Authorize** button) or as `Authorization: Bearer <token>`.
-
 ### Running from the IDE
 
 `./mvnw spring-boot:run` (JDK 25) expects Postgres on `localhost:5432`. The Compose file does not publish the database port to the host, so add a `ports: ["5432:5432"]` mapping to the `postgres` service first, and stop the `roster-app` container to free port 8080.
