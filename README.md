@@ -1,8 +1,25 @@
 # roster
 
-Employee shift scheduling service — part of a fast-food-style order fulfillment system, made up of independent microservices: kiosk/ordering, kitchen, inventory/production, and this service, **roster**.
+Employee shift scheduling service: a Spring Boot REST API with permission-based access control, deployed to AWS through a GitHub Actions pipeline.
 
-Unlike the other services in the ecosystem, **roster is standalone**: it neither publishes nor consumes events via Kafka. This is a deliberate architectural decision — employee scheduling doesn't participate in the real-time order/kitchen/inventory transactional flow, so there's no reason to couple it to the messaging layer. Any future integration with another service (e.g. "who's currently on shift") would be done via a direct synchronous REST call to this service.
+It is the first service of a planned fast-food order fulfillment system made of independent microservices (kiosk/ordering, kitchen, inventory/production). Roster is the only one built and deployed so far.
+
+**Status:** running on a single AWS EC2 instance, redeployed automatically on every push to `main`. See [Scope and known limitations](#scope-and-known-limitations) for what this deployment deliberately does not cover yet.
+
+## Contents
+
+- [Tech stack](#tech-stack)
+- [Architecture](#architecture)
+- [Data model](#data-model)
+- [Authentication](#authentication)
+- [Authorization model](#authorization-model)
+- [Implemented endpoints](#implemented-endpoints)
+- [Running locally](#running-locally)
+- [Tests](#tests)
+- [CI/CD and deployment](#cicd-and-deployment)
+- [Scope and known limitations](#scope-and-known-limitations)
+- [Roadmap](#roadmap)
+- [Code conventions](#code-conventions)
 
 ## Tech stack
 
@@ -18,6 +35,9 @@ Unlike the other services in the ecosystem, **roster is standalone**: it neither
 | Documentation | springdoc-openapi 3.0.2 (Swagger UI) |
 | Testing | JUnit 5, Mockito, Testcontainers (Postgres), `@WebMvcTest` |
 | Boilerplate | Lombok |
+| Packaging | Docker (multi-stage build), Docker Compose |
+| CI/CD | GitHub Actions, authenticated to AWS through OIDC |
+| Cloud | AWS EC2, ECR, IAM, Systems Manager |
 
 > Naming note: the correct security starter for this version is `spring-boot-starter-security-oauth2-resource-server`. The older name, `spring-boot-starter-oauth2-resource-server`, has been deprecated as of Boot 4 in favor of this one.
 
@@ -25,9 +45,11 @@ Unlike the other services in the ecosystem, **roster is standalone**: it neither
 
 ### Where roster sits in the ecosystem
 
+The other services in this diagram are planned, not built yet.
+
 ```mermaid
 graph TD
-    subgraph Ecosystem["Fast-food order fulfillment system"]
+    subgraph Ecosystem["Fast-food order fulfillment system (planned)"]
         Kiosk["Kiosk / Ordering"]
         Kitchen["Kitchen"]
         Inventory["Inventory & Production"]
@@ -41,6 +63,8 @@ graph TD
 
     style Roster fill:#e6d5f7,stroke:#8d6bb0,stroke-width:2px
 ```
+
+**Roster is standalone by design**: it neither publishes nor consumes events via Kafka. Employee scheduling doesn't take part in the real-time order/kitchen/inventory flow, so there is no reason to couple it to the messaging layer. Any future integration with another service (e.g. "who's currently on shift") would be a direct synchronous REST call to this service.
 
 ### Layered architecture (internal to the service)
 
@@ -109,6 +133,9 @@ erDiagram
         string password_hash
         uuid role_id FK
         string status
+        boolean account_locked
+        int failed_attempt
+        timestamp lock_time
         timestamp created_at
         timestamp updated_at
     }
@@ -154,9 +181,11 @@ erDiagram
     }
 ```
 
-Note that `EMPLOYEE` has no `store_id` — an employee doesn't belong to a fixed store. The link between employee and store originates from `SHIFT`, since a person can be scheduled at more than one location.
+Note that `EMPLOYEE` has no `store_id`: an employee doesn't belong to a fixed store. The link between employee and store originates from `SHIFT`, since a person can be scheduled at more than one location.
 
-`ROLE` doesn't hardcode behavior: it's just a name attached to a set of `PERMISSION`s through `ROLE_PERMISSION`. Seeded roles (`MANAGER`, `SUPERVISOR`, `STAFF`) are a starting point, not a fixed enum — see below.
+`ROLE` doesn't hardcode behavior: it's just a name attached to a set of `PERMISSION`s through `ROLE_PERMISSION`. Seeded roles (`MANAGER`, `SUPERVISOR`, `STAFF`) are a starting point, not a fixed enum (see below).
+
+The schema is owned by Flyway (`src/main/resources/db/migration`); Hibernate runs with `ddl-auto: validate` and never changes it.
 
 ## Authentication
 
@@ -181,9 +210,11 @@ sequenceDiagram
     AC-->>C: 200 OK { token, expiresInSeconds }
 ```
 
-The service issues its own tokens (there is no external Authorization Server). The RSA key pair is generated in memory at startup (`JwtConfig.rsaKeyPair()`) — simple enough for this stage of the project, with the trade-off that every restart invalidates previously issued tokens.
+The service issues its own tokens (there is no external Authorization Server). The RSA key pair is generated in memory at startup (`JwtConfig.rsaKeyPair()`), which is simple enough for this stage of the project, with the trade-off that every restart (including every deploy) invalidates previously issued tokens. Tokens are valid for 1 hour.
 
-`EmployeePrincipal` resolves `employee.getRole().getPermissions()` **inside** `loadUserByUsername`'s transaction and copies the permission names into a plain `Set<String>` — the JPA-managed `Role`/`Permission` entities never leak outside that transaction, which is what avoids `LazyInitializationException` down the line.
+`EmployeePrincipal` resolves `employee.getRole().getPermissions()` **inside** `loadUserByUsername`'s transaction and copies the permission names into a plain `Set<String>`. The JPA-managed `Role`/`Permission` entities never leak outside that transaction, which is what avoids `LazyInitializationException` down the line.
+
+**Account lockout.** `AuthenticationEventListener` listens to Spring Security's authentication events and counts failed logins per employee. After 3 failed attempts the account is locked (`account_locked`, `lock_time`); a successful login resets the counter. Only employees with status `ACTIVE` can authenticate.
 
 ## Authorization model
 
@@ -192,95 +223,24 @@ Authorization is **permission-based**, not role-based: the API never checks `has
 1. Each `Role` is just a name attached to a set of `Permission`s (`MANAGER`, `SUPERVISOR`, `STAFF` today, seeded in `V4__permissions.sql`).
 2. On login, the employee's permission names are copied into the JWT as a `permissions` claim (e.g. `["STORE_READ", "SHIFT_READ", "TIME_OFF_SELF"]`).
 3. `SecurityConfig` gates every route by permission (`hasAuthority(Permissions.STORE_READ)`), never by role name.
-4. Adding a new role, or changing what an existing role can do, is a **data change** — `POST /roles` + `PUT /roles/{id}/permissions` — not a code change or a redeploy.
+4. Adding a new role, or changing what an existing role can do, is a **data change** (`POST /roles` + `PUT /roles/{id}/permissions`), not a code change or a redeploy.
 
-Many permissions come in `_SELF` / `_ANY` pairs (e.g. `TIME_OFF_SELF`, `TIME_OFF_ANY`). The route matcher only confirms the caller holds *one of the two* — it can't know, at the routing level, whether the record in the URL/body actually belongs to the caller. That check happens in the controller, via `SecurityUtil`:
+Many permissions come in `_SELF` / `_ANY` pairs (e.g. `TIME_OFF_SELF`, `TIME_OFF_ANY`). The route matcher only confirms the caller holds *one of the two*; it can't know, at the routing level, whether the record in the URL/body actually belongs to the caller. That check happens in the controller, via `SecurityUtil`:
 
 ```java
 // caller must own employeeId, unless they hold the "_ANY" permission
 SecurityUtil.requireOwnershipOrPermission(employeeId, Permissions.TIME_OFF_ANY);
 ```
 
-`SecurityUtil.currentEmployeeId()` reads the caller's identity from the JWT `sub` claim — request bodies are never trusted to say who's calling. That distinction mattered in practice: an earlier version of `PUT /swap-requests/{id}` took the acting employee's id from the request body, which meant a caller could claim to be the swap's target. The fix removed that field from the DTO entirely; the acting identity now always comes from `SecurityUtil.currentEmployeeId()`, and the service re-validates it against the swap request's real `target`.
+`SecurityUtil.currentEmployeeId()` reads the caller's identity from the JWT `sub` claim; request bodies are never trusted to say who's calling. That distinction mattered in practice: an earlier version of `PUT /swap-requests/{id}` took the acting employee's id from the request body, which meant a caller could claim to be the swap's target. The fix removed that field from the DTO entirely; the acting identity now always comes from `SecurityUtil.currentEmployeeId()`, and the service re-validates it against the swap request's real `target`.
 
-**Known trade-off**: permissions are baked into the JWT at login time. If a `MANAGER` changes a role's permissions mid-flight, employees already holding a token keep their old permission set until it expires (1 hour) or they log in again. Acceptable for this project's scale; a production system with tighter requirements would need either short-lived tokens with refresh, or a permission lookup on each request instead of trusting the token's claim.
+Any route not listed explicitly in `SecurityConfig` falls through to `ROLE_MANAGE`, so a new endpoint is closed by default until a permission is assigned to it.
 
 ### Use case diagram
 
-![Roster use case diagram](https://github.com/fabianoic/roster/blob/fba4672ba5e348cfc76b1697ce31f0e4f860adf9/roster_user_case.png)
+![Roster use case diagram](roster_user_case.png)
 
-`Manager` is modeled as a specialization of `Any User` (UML actor generalization) — it inherits every self-service use case (checking a shift, requesting a swap, declaring availability, requesting time off) and adds the administrative ones (managing roles/permissions, stores, employees). This mirrors the permission model above: a `MANAGER` role is simply seeded with every permission a `STAFF` has, plus the administrative ones — the diagram and the `role_permission` table describe the same boundary from two angles.
-
-## Code conventions
-
-### Package structure
-
-```
-com.ficsolution.roster/
-├── config/              # SecurityConfig, JwtConfig, SwaggerConfig
-├── security/            # EmployeePrincipal, EmployeeUserDetailsService, SecurityUtil, Permissions
-├── validation/          # @ValidPassword + its ConstraintValidator
-├── exception/           # domain exceptions (ObjectNotFoundException, ObjectConflictException)
-├── model/               # JPA entities
-│   └── enums/           # domain enums (EmployeeStatus, ShiftStatus, RequestStatus, TimeOffRequestType)
-├── repository/           # JpaRepository interfaces
-│   └── specification/   # Specification<T> filters (EmployeeSpecification, ShiftSpecification)
-├── service/             # business logic
-└── web/
-    ├── controller/      # REST controllers, thin
-    ├── handler/         # GlobalExceptionHandler (ProblemDetail / RFC 7807)
-    └── dto/
-        ├── auth/        # LoginRequest, LoginResponse
-        ├── employee/    # ...Employee request/response DTOs
-        ├── permission/  # PermissionResponse, RolePermissionsRequest
-        ├── role/        # RoleRequest, RoleResponse
-        ├── shift/        # ...
-        ├── timeoff/      # ...
-        ├── availability/ # ...
-        └── common/       # PagedResponse and other shared shapes
-```
-
-Every new entity follows the same pattern: DTOs live in `web/dto/<entity>/`, never inside the entity's own file.
-
-### DTO conventions
-
-- No `DTO` suffix in the name — `RoleRequest`, not `RoleDTO`.
-- A single `XRequest` covers both creation and update when the fields don't diverge. Split into `CreateXRequest`/`UpdateXRequest` only when the rules genuinely differ between the two flows.
-- Always a `record`, never a class.
-- `XResponse.from(entity)` — static factory method for Entity → DTO.
-- `XRequest.toEntity()` — instance method for DTO → Entity, **only when construction is a direct field copy**, with no dependency on a repository or another bean. As soon as assembly requires fetching something from the database or applying a rule (e.g. `EmployeeService.createEmployee`, which resolves `Role` and hashes the password), that logic belongs in the `service`, not in the DTO.
-
-### Dependency injection
-
-Adopted pattern: **constructor injection** via `@RequiredArgsConstructor` (Lombok), `private final` field.
-
-### Domain exceptions
-
-Two generic exceptions, parameterized by data rather than by type:
-
-- `ObjectNotFoundException(String resourceName, String identifier)` → 404
-- `ObjectConflictException(String resourceName, String reason)` → 409
-- Spring Security's `AccessDeniedException` → 403 (mapped centrally alongside the two above)
-
-This avoids the explosion of one class per entity (`EmployeeNotFoundException`, `RoleNotFoundException`, ...) when the behavior is identical and only the data changes. Handled centrally by `GlobalExceptionHandler`, which responds with `ProblemDetail` (RFC 7807).
-
-### Validation
-
-Bean Validation on the DTOs (`@NotBlank`, `@Email`, `@Size`). Password rule via a custom annotation: `@ValidPassword` (minimum 12 characters, focused on length rather than low-value complexity rules).
-
-### IDs
-
-`@GeneratedValue(strategy = GenerationType.UUID)` on every entity.
-
-### JPA entities
-
-`@Getter`/`@Setter` only — never Lombok's `@Data` on an entity. `@Data` generates `equals()`/`hashCode()`/`toString()` that touch every field, including lazy associations, which is exactly what triggers `LazyInitializationException` once the entity leaves its transaction (this bit us twice early on, on the `Employee → Role` association).
-
-### Tests
-
-- **Repository**: `@DataJpaTest` + Testcontainers (real Postgres), never H2 or mocks.
-- **Service**: plain JUnit 5 + Mockito, no Spring context.
-- **Controller**: `@WebMvcTest` + `@MockitoBean` (the old `@MockBean` was removed in Boot 4 — watch out to import from `org.springframework.test.context.bean.override.mockito`, not `org.springframework.boot.test.mock.mockito`). Requires the `spring-boot-starter-webmvc-test` dependency, separate from `spring-boot-starter-test` since Boot 4's modularization. Authorization tests use dedicated JWT post-processors per permission set (`Util.staffAuthority`, `Util.supervisorAuthority`, ...), each with a real `sub` claim, so ownership checks are actually exercised — not just role gating.
+`Manager` is modeled as a specialization of `Any User` (UML actor generalization): it inherits every self-service use case (checking a shift, requesting a swap, declaring availability, requesting time off) and adds the administrative ones (managing roles/permissions, stores, employees). This mirrors the permission model above: a `MANAGER` role is simply seeded with every permission a `STAFF` has, plus the administrative ones. The diagram and the `role_permission` table describe the same boundary from two angles.
 
 ## Implemented endpoints
 
@@ -326,13 +286,186 @@ Bean Validation on the DTOs (`@NotBlank`, `@Email`, `@Size`). Password rule via 
 
 All routes above except `/auth/login` also require a valid, non-expired JWT (`Authorization: Bearer <token>`).
 
+Errors are returned as `ProblemDetail` (RFC 7807). Validation failures (400) include an `errors` object mapping each invalid field to its message.
+
 ## Running locally
 
-Prerequisites: JDK 25, Docker.
+Prerequisite: Docker. A JDK is not needed for this path, since the image is built inside Docker.
 
 ```bash
-docker compose up -d          # starts Postgres (roster_db, postgres/postgres, port 5432)
-./mvnw spring-boot:run        # applies Flyway migrations automatically and starts the app
+docker compose up -d --build
 ```
 
-The API comes up at `http://localhost:8080`. Swagger UI at `/swagger-ui.html`, OpenAPI spec at `/v3/api-docs`. Actuator health at `/actuator/health`.
+This starts two containers: `roster-postgres` (PostgreSQL 16, database `roster_db`) and `roster-app` (the API, built from the `Dockerfile`). Flyway applies the migrations and the seed data on startup.
+
+| What | Where |
+|---|---|
+| API | `http://localhost:8080` |
+| Swagger UI | `http://localhost:8080/swagger-ui.html` (public) |
+| OpenAPI spec | `http://localhost:8080/v3/api-docs` (public) |
+| Health | `http://localhost:8080/actuator/health` (requires a token with `ROLE_MANAGE`) |
+
+### First login
+
+The employees seeded by `V2__seed_tables.sql` carry placeholder password hashes, so none of them can log in as shipped. Set a real BCrypt hash for the seeded manager once:
+
+```bash
+docker compose exec postgres psql -U postgres -d roster_db -c \
+  "CREATE EXTENSION IF NOT EXISTS pgcrypto; \
+   UPDATE employee SET password_hash = crypt('local-dev-password', gen_salt('bf', 10)) \
+   WHERE email = 'ana.silva@empresa.com';"
+```
+
+Then request a token:
+
+```bash
+curl -X POST http://localhost:8080/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "ana.silva@empresa.com", "password": "local-dev-password"}'
+```
+
+Use the returned `token` in Swagger UI (**Authorize** button) or as `Authorization: Bearer <token>`.
+
+### Running from the IDE
+
+`./mvnw spring-boot:run` (JDK 25) expects Postgres on `localhost:5432`. The Compose file does not publish the database port to the host, so add a `ports: ["5432:5432"]` mapping to the `postgres` service first, and stop the `roster-app` container to free port 8080.
+
+Database connection settings come from environment variables with local defaults: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`.
+
+## Tests
+
+```bash
+./mvnw test
+```
+
+Docker must be running: repository tests start a real PostgreSQL through Testcontainers.
+
+| Layer | Approach |
+|---|---|
+| Repository | `@DataJpaTest` + Testcontainers (real Postgres), never H2 or mocks |
+| Service | Plain JUnit 5 + Mockito, no Spring context |
+| Controller | `@WebMvcTest` + `@MockitoBean`, with a JWT per permission set so ownership checks are exercised, not just route gating |
+
+The same command runs in the pipeline; a failing test stops the build before any image is pushed.
+
+## CI/CD and deployment
+
+Every push to `main` runs `.github/workflows/build-and-push.yml`:
+
+```mermaid
+flowchart LR
+    Push["Push to main"] --> Test["Run tests<br/>./mvnw test"]
+    Test --> OIDC["Assume AWS role<br/>via OIDC"]
+    OIDC --> Build["Build image<br/>tag: commit SHA + latest"]
+    Build --> ECR[("Amazon ECR")]
+    ECR --> SSM["SSM Run Command"]
+    SSM --> EC2["EC2 instance<br/>docker compose pull + up"]
+```
+
+1. **Test.** The full test suite runs on JDK 25. If it fails, nothing is built or deployed.
+2. **Authenticate.** GitHub Actions assumes an IAM role through OpenID Connect. AWS issues short-lived credentials for that single run, so no AWS access keys are stored in GitHub.
+3. **Build and push.** The multi-stage `Dockerfile` builds the jar on a JDK image and ships it on a JRE Alpine image. The image is pushed to Amazon ECR tagged with the commit SHA (so every build traces back to a commit) and `latest`.
+4. **Deploy.** The workflow sends a command to the instance through AWS Systems Manager, which logs in to ECR, pulls the new image and restarts the Compose stack. The job waits for the command and fails if it does not report `Success`.
+
+### What runs on AWS
+
+| Piece | Detail |
+|---|---|
+| Compute | One EC2 `t3.micro` (Amazon Linux 2023) in `eu-north-1`, running Docker Compose |
+| Registry | Amazon ECR, private repository |
+| Instance access to ECR | IAM role attached to the instance; no credentials stored on the machine |
+| Deploy channel | Systems Manager Run Command; the pipeline never opens an SSH session |
+| Pipeline access to AWS | IAM role assumed through GitHub OIDC, limited to what the pipeline needs |
+
+The Compose file used on the instance pulls the image from ECR instead of building it; it lives on the instance and is not part of this repository.
+
+## Scope and known limitations
+
+This is a learning deployment, and these are the conscious gaps:
+
+- **Single instance.** No load balancer, no auto scaling, no second availability zone. A restart or deploy means a short downtime.
+- **Infrastructure created by hand.** IAM roles, the ECR repository and the instance were set up in the AWS console. Nothing is described as Infrastructure as Code yet.
+- **HTTP only.** No domain and no TLS certificate in front of the API.
+- **Signing key in memory.** The RSA key pair is regenerated on every start, so every deploy invalidates issued tokens. A production setup would load the key from a secret store.
+- **Permissions baked into the token.** If a role's permissions change, employees already holding a token keep the old set until it expires (1 hour) or they log in again. Tighter requirements would need short-lived tokens with refresh, or a permission lookup per request.
+- **Account lockout has no automatic unlock.** `lock_time` is recorded but not yet used to release the account.
+- **Health endpoint is behind authentication.** `/actuator/health` falls under the default `ROLE_MANAGE` rule, so an external monitor cannot call it yet.
+- **Seed data is not login-ready.** See [First login](#first-login).
+
+## Roadmap
+
+1. Angular dashboard consuming this API.
+2. Terraform for the existing AWS resources.
+3. Inventory/production service communicating through Kafka, the first event-driven piece of the ecosystem.
+
+## Code conventions
+
+### Package structure
+
+```
+com.ficsolution.roster/
+├── config/              # SecurityConfig, JwtConfig, SwaggerConfig
+├── security/            # EmployeePrincipal, EmployeeUserDetailsService, SecurityUtil, Permissions,
+│                        # AuthenticationEventListener
+├── validation/          # @ValidPassword + its ConstraintValidator
+├── exception/           # domain exceptions (ObjectNotFoundException, ObjectConflictException)
+├── model/               # JPA entities
+│   └── enums/           # domain enums (EmployeeStatus, ShiftStatus, RequestStatus, TimeOffRequestType)
+├── repository/          # JpaRepository interfaces
+│   └── specification/   # Specification<T> filters (EmployeeSpecification, ShiftSpecification)
+├── service/             # business logic
+└── web/
+    ├── controller/      # REST controllers, thin
+    ├── handler/         # GlobalExceptionHandler (ProblemDetail / RFC 7807)
+    └── dto/
+        ├── auth/         # LoginRequest, LoginResponse
+        ├── employee/     # ...Employee request/response DTOs
+        ├── permission/   # PermissionResponse, RolePermissionsRequest
+        ├── role/         # RoleRequest, RoleResponse
+        ├── shift/        # ...
+        ├── timeoff/      # ...
+        ├── availability/ # ...
+        └── common/       # PagedResponse and other shared shapes
+```
+
+Every new entity follows the same pattern: DTOs live in `web/dto/<entity>/`, never inside the entity's own file.
+
+### DTO conventions
+
+- No `DTO` suffix in the name: `RoleRequest`, not `RoleDTO`.
+- A single `XRequest` covers both creation and update when the fields don't diverge. Split into `CreateXRequest`/`UpdateXRequest` only when the rules genuinely differ between the two flows.
+- Always a `record`, never a class.
+- `XResponse.from(entity)`: static factory method for Entity → DTO.
+- `XRequest.toEntity()`: instance method for DTO → Entity, **only when construction is a direct field copy**, with no dependency on a repository or another bean. As soon as assembly requires fetching something from the database or applying a rule (e.g. `EmployeeService.createEmployee`, which resolves `Role` and hashes the password), that logic belongs in the `service`, not in the DTO.
+
+### Dependency injection
+
+Adopted pattern: **constructor injection** via `@RequiredArgsConstructor` (Lombok), `private final` field.
+
+### Domain exceptions
+
+Two generic exceptions, parameterized by data rather than by type:
+
+- `ObjectNotFoundException(String resourceName, String identifier)` → 404
+- `ObjectConflictException(String resourceName, String reason)` → 409
+- Spring Security's `AccessDeniedException` → 403 (mapped centrally alongside the two above)
+
+This avoids the explosion of one class per entity (`EmployeeNotFoundException`, `RoleNotFoundException`, ...) when the behavior is identical and only the data changes. Handled centrally by `GlobalExceptionHandler`, which responds with `ProblemDetail` (RFC 7807).
+
+### Validation
+
+Bean Validation on the DTOs (`@NotBlank`, `@Email`, `@Size`). Password rule via a custom annotation: `@ValidPassword` (minimum 12 characters, focused on length rather than low-value complexity rules).
+
+### IDs
+
+`@GeneratedValue(strategy = GenerationType.UUID)` on every entity.
+
+### JPA entities
+
+`@Getter`/`@Setter` only, never Lombok's `@Data` on an entity. `@Data` generates `equals()`/`hashCode()`/`toString()` that touch every field, including lazy associations, which is exactly what triggers `LazyInitializationException` once the entity leaves its transaction (this bit us twice early on, on the `Employee → Role` association).
+
+### Test conventions
+
+- **`@MockitoBean`, not `@MockBean`.** The old `@MockBean` was removed in Boot 4; import from `org.springframework.test.context.bean.override.mockito`, not `org.springframework.boot.test.mock.mockito`.
+- **`spring-boot-starter-webmvc-test`** is a separate dependency from `spring-boot-starter-test` since Boot 4's modularization, and `@WebMvcTest` needs it.
+- **Authorization tests use dedicated JWT post-processors per permission set** (`Util.staffAuthority`, `Util.supervisorAuthority`, ...), each with a real `sub` claim, so ownership checks are actually exercised.
