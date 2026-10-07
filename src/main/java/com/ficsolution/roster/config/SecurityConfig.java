@@ -62,6 +62,7 @@ public class SecurityConfig {
 
                         // Shift swap requests
                         .requestMatchers(HttpMethod.POST, "/shifts/*/swap-requests").hasAnyAuthority(SWAP_REQUEST_SELF, SWAP_REQUEST_ANY)
+                        .requestMatchers(HttpMethod.GET, "/shifts/*/swap-candidates").hasAnyAuthority(SWAP_REQUEST_SELF, SWAP_REQUEST_ANY)
                         .requestMatchers(HttpMethod.PUT, "/swap-requests/*").hasAnyAuthority(SWAP_REQUEST_SELF, SWAP_REQUEST_ANY)
                         .requestMatchers(HttpMethod.GET, "/swap-requests/*").hasAnyAuthority(SWAP_REQUEST_SELF, SWAP_REQUEST_ANY)
                         .requestMatchers(HttpMethod.DELETE, "/swap-requests/*").hasAnyAuthority(SWAP_REQUEST_SELF, SWAP_REQUEST_ANY)

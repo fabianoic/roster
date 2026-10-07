@@ -3,6 +3,8 @@ package com.ficsolution.roster.web.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ficsolution.roster.config.JwtConfig;
 import com.ficsolution.roster.config.SecurityConfig;
+import com.ficsolution.roster.exception.ObjectConflictException;
+import com.ficsolution.roster.exception.ObjectNotFoundException;
 import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.model.Role;
 import com.ficsolution.roster.model.Shift;
@@ -38,6 +40,8 @@ import java.util.UUID;
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -305,5 +309,81 @@ public class ShiftControllerTest {
         mockMvc.perform(get(String.format("%s/%s", path, id))
                         .with(Util.staffAuthority))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void mustRetrieveSwapCandidatesOfAnyShiftWithSwapRequestAnyPermission() throws Exception {
+        UUID brunoId = UUID.randomUUID();
+        List<Employee> candidates = List.of(
+                Employee.builder().id(brunoId).name("Bruno Costa").email("bruno.costa@empresa.com").password("hash").build(),
+                Employee.builder().id(UUID.randomUUID()).name("Diego Rocha").build());
+        given(shiftService.retrieveShiftById(id)).willReturn(shift);
+        given(shiftService.retrieveCandidatesToSwapShift(shift)).willReturn(candidates);
+
+        mockMvc.perform(get(String.format("%s/%s/swap-candidates", path, id))
+                        .with(Util.supervisorAuthority))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[0].id").value(brunoId.toString()))
+                .andExpect(jsonPath("$[0].name").value("Bruno Costa"))
+                .andExpect(jsonPath("$[0].email").doesNotExist())
+                .andExpect(jsonPath("$[0].password").doesNotExist())
+                .andExpect(jsonPath("$[1].name").value("Diego Rocha"));
+    }
+
+    @Test
+    void mustAllowStaffToRetrieveSwapCandidatesOfOwnShift() throws Exception {
+        Shift ownShift = Shift.builder()
+                .id(id)
+                .employee(Employee.builder().id(Util.employeeId).build())
+                .status(ShiftStatus.SCHEDULED)
+                .build();
+        given(shiftService.retrieveShiftById(id)).willReturn(ownShift);
+        given(shiftService.retrieveCandidatesToSwapShift(ownShift)).willReturn(List.of());
+
+        mockMvc.perform(get(String.format("%s/%s/swap-candidates", path, id))
+                        .with(Util.staffAuthority))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(0)));
+    }
+
+    @Test
+    void mustReturn403WhenStaffRetrievesSwapCandidatesOfAnotherEmployeeShift() throws Exception {
+        given(shiftService.retrieveShiftById(id)).willReturn(shift);
+
+        mockMvc.perform(get(String.format("%s/%s/swap-candidates", path, id))
+                        .with(Util.staffAuthority))
+                .andExpect(status().isForbidden());
+
+        verify(shiftService, never()).retrieveCandidatesToSwapShift(any());
+    }
+
+    @Test
+    void mustReturn403WhenRetrievingSwapCandidatesWithoutSwapRequestPermission() throws Exception {
+        mockMvc.perform(get(String.format("%s/%s/swap-candidates", path, id))
+                        .with(jwt().authorities(Util.authorities(Permissions.SHIFT_READ))))
+                .andExpect(status().isForbidden());
+
+        verify(shiftService, never()).retrieveShiftById(any());
+    }
+
+    @Test
+    void mustReturn409WhenRetrievingSwapCandidatesOfANonScheduledShift() throws Exception {
+        given(shiftService.retrieveShiftById(id)).willReturn(shift);
+        given(shiftService.retrieveCandidatesToSwapShift(shift))
+                .willThrow(new ObjectConflictException("Shift", "Need to be a SCHEDULED shift"));
+
+        mockMvc.perform(get(String.format("%s/%s/swap-candidates", path, id))
+                        .with(Util.authority))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void mustReturn404WhenRetrievingSwapCandidatesOfAnUnknownShift() throws Exception {
+        given(shiftService.retrieveShiftById(id)).willThrow(new ObjectNotFoundException("Shift", id.toString()));
+
+        mockMvc.perform(get(String.format("%s/%s/swap-candidates", path, id))
+                        .with(Util.authority))
+                .andExpect(status().isNotFound());
     }
 }

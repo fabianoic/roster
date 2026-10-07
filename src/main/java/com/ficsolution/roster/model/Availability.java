@@ -1,5 +1,6 @@
 package com.ficsolution.roster.model;
 
+import com.ficsolution.roster.model.converter.DayOfWeekConverter;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -22,6 +23,7 @@ public class Availability {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "employee_id", nullable = false)
     private Employee employee;
+    @Convert(converter = DayOfWeekConverter.class)
     private DayOfWeek weekday;
     @Column(name = "is_available", nullable = false)
     private boolean isAvailable = false;

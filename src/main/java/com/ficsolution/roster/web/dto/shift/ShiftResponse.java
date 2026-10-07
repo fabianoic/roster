@@ -2,6 +2,7 @@ package com.ficsolution.roster.web.dto.shift;
 
 import com.ficsolution.roster.model.Shift;
 import com.ficsolution.roster.model.enums.ShiftStatus;
+import com.ficsolution.roster.web.dto.common.EmployeeSummary;
 
 import java.time.LocalDate;
 import java.time.LocalTime;

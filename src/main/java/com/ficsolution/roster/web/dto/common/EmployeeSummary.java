@@ -1,4 +1,4 @@
-package com.ficsolution.roster.web.dto.timeoff;
+package com.ficsolution.roster.web.dto.common;
 
 import com.ficsolution.roster.model.Employee;
 
