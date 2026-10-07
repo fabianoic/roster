@@ -89,7 +89,7 @@ public class ShiftSwapRequestControllerTest {
     @Test
     void mustCreateSwapRequestWithSuccess() throws Exception {
         ShiftSwapRequest shiftSwapRequest = buildShiftSwapRequest(RequestStatus.PENDING);
-        CreateSwapRequest request = new CreateSwapRequest(Util.shiftId, Util.employeeId, Util.employee1Id);
+        CreateSwapRequest request = new CreateSwapRequest(Util.employeeId, Util.employee1Id);
         given(shiftSwapRequestService.createShiftSwapRequest(any(ShiftSwapRequest.class))).willReturn(shiftSwapRequest);
 
         mockMvc.perform(post(String.format("/shifts/%s/swap-requests", Util.shiftId))
@@ -104,7 +104,7 @@ public class ShiftSwapRequestControllerTest {
 
     @Test
     void mustReturn400WhenCreateRequestHasMissingFields() throws Exception {
-        CreateSwapRequest request = new CreateSwapRequest(null, Util.employeeId, Util.employee1Id);
+        CreateSwapRequest request = new CreateSwapRequest( null, Util.employee1Id);
 
         mockMvc.perform(post(String.format("/shifts/%s/swap-requests", Util.shiftId))
                         .with(Util.authority)
@@ -115,7 +115,7 @@ public class ShiftSwapRequestControllerTest {
 
     @Test
     void mustReturn404WhenShiftNotFoundOnCreate() throws Exception {
-        CreateSwapRequest request = new CreateSwapRequest(Util.shiftId, Util.employeeId, Util.employee1Id);
+        CreateSwapRequest request = new CreateSwapRequest(Util.employeeId, Util.employee1Id);
         given(shiftSwapRequestService.createShiftSwapRequest(any(ShiftSwapRequest.class)))
                 .willThrow(ObjectNotFoundException.class);
 
@@ -128,7 +128,7 @@ public class ShiftSwapRequestControllerTest {
 
     @Test
     void mustReturn409WhenRequesterIsNotShiftOwner() throws Exception {
-        CreateSwapRequest request = new CreateSwapRequest(Util.shiftId, Util.employeeId, Util.employee1Id);
+        CreateSwapRequest request = new CreateSwapRequest(Util.employeeId, Util.employee1Id);
         given(shiftSwapRequestService.createShiftSwapRequest(any(ShiftSwapRequest.class)))
                 .willThrow(ObjectConflictException.class);
 
@@ -141,7 +141,7 @@ public class ShiftSwapRequestControllerTest {
 
     @Test
     void mustReturn401WhenNotAuthorized() throws Exception {
-        CreateSwapRequest request = new CreateSwapRequest(Util.shiftId, Util.employeeId, Util.employee1Id);
+        CreateSwapRequest request = new CreateSwapRequest(Util.employeeId, Util.employee1Id);
 
         mockMvc.perform(post(String.format("/shifts/%s/swap-requests", Util.shiftId))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -265,7 +265,7 @@ public class ShiftSwapRequestControllerTest {
     @Test
     void mustAllowStaffToCreateSwapRequestForSelf() throws Exception {
         ShiftSwapRequest shiftSwapRequest = buildShiftSwapRequest(RequestStatus.PENDING);
-        CreateSwapRequest request = new CreateSwapRequest(Util.shiftId, Util.employeeId, Util.employee1Id);
+        CreateSwapRequest request = new CreateSwapRequest(Util.employeeId, Util.employee1Id);
         given(shiftSwapRequestService.createShiftSwapRequest(any(ShiftSwapRequest.class))).willReturn(shiftSwapRequest);
 
         mockMvc.perform(post(String.format("/shifts/%s/swap-requests", Util.shiftId))
@@ -277,7 +277,7 @@ public class ShiftSwapRequestControllerTest {
 
     @Test
     void mustReturn403WhenStaffCreatesSwapRequestAsAnotherEmployee() throws Exception {
-        CreateSwapRequest request = new CreateSwapRequest(Util.shiftId, Util.employeeId, Util.employee1Id);
+        CreateSwapRequest request = new CreateSwapRequest(Util.employeeId, Util.employee1Id);
 
         mockMvc.perform(post(String.format("/shifts/%s/swap-requests", Util.shiftId))
                         .with(Util.staffOtherAuthority)

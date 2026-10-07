@@ -8,11 +8,10 @@ import jakarta.validation.constraints.NotNull;
 import java.util.UUID;
 
 public record CreateSwapRequest(
-        @NotNull UUID shiftId,
         @NotNull UUID requesterId,
         @NotNull UUID targetId
 ) {
-    public ShiftSwapRequest toEntity() {
+    public ShiftSwapRequest toEntity(UUID shiftId) {
         return ShiftSwapRequest.builder()
                 .shift(Shift.builder().id(shiftId).build())
                 .requester(Employee.builder().id(requesterId).build())

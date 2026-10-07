@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -20,4 +21,7 @@ public interface ShiftRepository extends JpaRepository<Shift, UUID>, JpaSpecific
 
     @EntityGraph(attributePaths = {"employee", "store"})
     Page<Shift> findAll(Specification<Shift> spec, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"employee", "store"})
+    Optional<Shift> findById(UUID id);
 }

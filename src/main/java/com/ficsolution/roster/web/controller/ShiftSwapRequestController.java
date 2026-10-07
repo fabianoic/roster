@@ -25,7 +25,7 @@ public class ShiftSwapRequestController {
     @PostMapping("/shifts/{id}/swap-requests")
     public ResponseEntity<ShiftSwapResponse> createSwapShift(@PathVariable UUID id, @Valid @RequestBody CreateSwapRequest swapRequest) {
         SecurityUtil.requireOwnershipOrPermission(swapRequest.requesterId(), Permissions.SWAP_REQUEST_ANY);
-        ShiftSwapRequest shiftSwapRequest = swapRequest.toEntity();
+        ShiftSwapRequest shiftSwapRequest = swapRequest.toEntity(id);
         shiftSwapRequest = shiftSwapRequestService.createShiftSwapRequest(shiftSwapRequest);
         return ResponseEntity.created(URI.create("/swap-requests/".concat(shiftSwapRequest.getId().toString()))).body(ShiftSwapResponse.from(shiftSwapRequest));
     }
