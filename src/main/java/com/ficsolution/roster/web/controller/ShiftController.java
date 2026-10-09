@@ -1,8 +1,9 @@
 package com.ficsolution.roster.web.controller;
 
 import com.ficsolution.roster.model.Shift;
-import com.ficsolution.roster.service.ShiftService;
 import com.ficsolution.roster.repository.specification.ShiftSpecification;
+import com.ficsolution.roster.service.ShiftService;
+import com.ficsolution.roster.web.dto.common.EmployeeSummary;
 import com.ficsolution.roster.web.dto.common.PagedResponse;
 import com.ficsolution.roster.web.dto.shift.CreateShiftRequest;
 import com.ficsolution.roster.web.dto.shift.ShiftFilter;
@@ -17,7 +18,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
+import java.util.List;
 import java.util.UUID;
+
+import static com.ficsolution.roster.security.Permissions.SWAP_REQUEST_ANY;
+import static com.ficsolution.roster.security.SecurityUtil.requireOwnershipOrPermission;
 
 @RestController
 @RequestMapping("/shifts")
@@ -64,5 +69,15 @@ public class ShiftController {
         Shift shift = updateShiftRequest.toEntity();
         shift = shiftService.updateShiftInfo(id, shift);
         return ResponseEntity.ok(ShiftResponse.from(shift));
+    }
+
+    @GetMapping("/{id}/swap-candidates")
+    public ResponseEntity<List<EmployeeSummary>> retrieveCandidatesAvailableToSwap(@PathVariable UUID id) {
+        Shift shift = shiftService.retrieveShiftById(id);
+        requireOwnershipOrPermission(shift.getEmployee().getId(), SWAP_REQUEST_ANY);
+        List<EmployeeSummary> candidates = shiftService.retrieveCandidatesToSwapShift(shift).stream()
+                .map(EmployeeSummary::from)
+                .toList();
+        return ResponseEntity.ok(candidates);
     }
 }

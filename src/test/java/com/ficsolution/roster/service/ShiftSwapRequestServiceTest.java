@@ -7,13 +7,16 @@ import com.ficsolution.roster.model.Shift;
 import com.ficsolution.roster.model.ShiftSwapRequest;
 import com.ficsolution.roster.model.enums.RequestStatus;
 import com.ficsolution.roster.repository.ShiftSwapRequestRepository;
+import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
 
+import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -53,7 +56,7 @@ public class ShiftSwapRequestServiceTest {
         shiftSwapRequest.setShift(shift);
         shiftSwapRequest.setRequester(requester);
         shiftSwapRequest.setTarget(target);
-        when(shiftSwapRequestRepository.save(any(ShiftSwapRequest.class))).thenReturn(shiftSwapRequest);
+        when(shiftSwapRequestRepository.saveAndFlush(any(ShiftSwapRequest.class))).thenReturn(shiftSwapRequest);
         when(shiftService.retrieveShiftById(shiftId)).thenReturn(shift);
         when(employeeService.retrieveEmployeeById(employeeId)).thenReturn(requester);
         when(employeeService.retrieveEmployeeById(employee1Id)).thenReturn(target);
@@ -62,9 +65,76 @@ public class ShiftSwapRequestServiceTest {
 
         assertNotNull(savedShiftSwapRequest);
         assertEquals(RequestStatus.PENDING, savedShiftSwapRequest.getStatus());
-        verify(shiftSwapRequestRepository, times(1)).save(shiftSwapRequest);
+        verify(shiftSwapRequestRepository, times(1)).saveAndFlush(shiftSwapRequest);
         verify(shiftService, times(1)).retrieveShiftById(shiftId);
+        verify(shiftSwapRequestRepository, times(1)).existsByShiftIdAndStatus(shiftId, RequestStatus.PENDING);
         verify(employeeService, times(2)).retrieveEmployeeById(any());
+    }
+
+    @Test
+    void testCreateShiftSwapRequest_pendingRequestAlreadyExists() {
+        Shift shift = new Shift();
+        shift.setId(shiftId);
+        Employee requester = new Employee();
+        requester.setId(employeeId);
+        shift.setEmployee(requester);
+        Employee target = new Employee();
+        target.setId(employee1Id);
+        ShiftSwapRequest shiftSwapRequest = new ShiftSwapRequest();
+        shiftSwapRequest.setShift(shift);
+        shiftSwapRequest.setRequester(requester);
+        shiftSwapRequest.setTarget(target);
+        when(shiftService.retrieveShiftById(shiftId)).thenReturn(shift);
+        when(shiftSwapRequestRepository.existsByShiftIdAndStatus(shiftId, RequestStatus.PENDING)).thenReturn(true);
+
+        assertThrows(ObjectConflictException.class, () -> shiftSwapRequestService.createShiftSwapRequest(shiftSwapRequest));
+        verify(employeeService, times(0)).retrieveEmployeeById(any());
+        verify(shiftSwapRequestRepository, times(0)).saveAndFlush(any(ShiftSwapRequest.class));
+    }
+
+    @Test
+    void testCreateShiftSwapRequest_concurrentPendingRequest() {
+        Shift shift = new Shift();
+        shift.setId(shiftId);
+        Employee requester = new Employee();
+        requester.setId(employeeId);
+        shift.setEmployee(requester);
+        Employee target = new Employee();
+        target.setId(employee1Id);
+        ShiftSwapRequest shiftSwapRequest = new ShiftSwapRequest();
+        shiftSwapRequest.setShift(shift);
+        shiftSwapRequest.setRequester(requester);
+        shiftSwapRequest.setTarget(target);
+        when(shiftService.retrieveShiftById(shiftId)).thenReturn(shift);
+        when(employeeService.retrieveEmployeeById(employeeId)).thenReturn(requester);
+        when(employeeService.retrieveEmployeeById(employee1Id)).thenReturn(target);
+        // another request passed the exists check at the same time and the unique index rejected this one
+        when(shiftSwapRequestRepository.saveAndFlush(any(ShiftSwapRequest.class))).thenThrow(new DataIntegrityViolationException(
+                "duplicate key", new ConstraintViolationException("duplicate key", new SQLException(), "uq_swap_pending_shift")));
+
+        assertThrows(ObjectConflictException.class, () -> shiftSwapRequestService.createShiftSwapRequest(shiftSwapRequest));
+    }
+
+    @Test
+    void testCreateShiftSwapRequest_otherConstraintViolation() {
+        Shift shift = new Shift();
+        shift.setId(shiftId);
+        Employee requester = new Employee();
+        requester.setId(employeeId);
+        shift.setEmployee(requester);
+        Employee target = new Employee();
+        target.setId(employee1Id);
+        ShiftSwapRequest shiftSwapRequest = new ShiftSwapRequest();
+        shiftSwapRequest.setShift(shift);
+        shiftSwapRequest.setRequester(requester);
+        shiftSwapRequest.setTarget(target);
+        when(shiftService.retrieveShiftById(shiftId)).thenReturn(shift);
+        when(employeeService.retrieveEmployeeById(employeeId)).thenReturn(requester);
+        when(employeeService.retrieveEmployeeById(employee1Id)).thenReturn(target);
+        when(shiftSwapRequestRepository.saveAndFlush(any(ShiftSwapRequest.class))).thenThrow(new DataIntegrityViolationException(
+                "check violation", new ConstraintViolationException("check violation", new SQLException(), "shift_swap_request_check")));
+
+        assertThrows(DataIntegrityViolationException.class, () -> shiftSwapRequestService.createShiftSwapRequest(shiftSwapRequest));
     }
 
     @Test
@@ -83,6 +153,8 @@ public class ShiftSwapRequestServiceTest {
         when(shiftService.retrieveShiftById(any())).thenReturn(shift);
 
         assertThrows(ObjectConflictException.class, () -> shiftSwapRequestService.createShiftSwapRequest(shiftSwapRequest));
+        verify(shiftSwapRequestRepository, times(0)).existsByShiftIdAndStatus(any(UUID.class), any(RequestStatus.class));
+        verify(shiftSwapRequestRepository, times(0)).saveAndFlush(any(ShiftSwapRequest.class));
     }
 
     @Test

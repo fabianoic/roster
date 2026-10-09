@@ -4,7 +4,9 @@ import com.ficsolution.roster.exception.ObjectConflictException;
 import com.ficsolution.roster.exception.ObjectNotFoundException;
 import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.model.Role;
+import com.ficsolution.roster.model.Shift;
 import com.ficsolution.roster.model.enums.EmployeeStatus;
+import com.ficsolution.roster.model.enums.ShiftStatus;
 import com.ficsolution.roster.repository.EmployeeRepository;
 import com.ficsolution.roster.web.dto.employee.ChangePasswordRequest;
 import com.ficsolution.roster.web.dto.employee.CreateEmployeeRequest;
@@ -20,7 +22,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -326,5 +331,42 @@ public class EmployeeServiceTest {
         assertEquals(EmployeeStatus.INACTIVE, employeeStatusChanged.getStatus());
         verify(employeeRepository, times(1)).findById(id);
         verify(employeeRepository, times(1)).save(employee);
+    }
+
+    @Test
+    void testRetrieveCandidatesToAShift() {
+        // 2026-10-07 is a Wednesday
+        Shift shift = buildShift(LocalDate.of(2026, 10, 7));
+        List<Employee> candidates = List.of(
+                Employee.builder().id(UUID.randomUUID()).name("Bruno Costa").build(),
+                Employee.builder().id(UUID.randomUUID()).name("Diego Rocha").build());
+        when(employeeRepository.findEligibleForShift(id, shift.getShiftDate(), DayOfWeek.WEDNESDAY,
+                shift.getStartTime(), shift.getEndTime())).thenReturn(candidates);
+
+        List<Employee> retrievedCandidates = employeeService.retrieveCandidatesToAShift(shift);
+
+        assertEquals(candidates, retrievedCandidates);
+    }
+
+    @Test
+    void testIsEligibleForShift() {
+        UUID candidateId = UUID.randomUUID();
+        // 2026-10-09 is a Friday
+        Shift shift = buildShift(LocalDate.of(2026, 10, 9));
+        when(employeeRepository.isEligibleForShift(candidateId, shift.getShiftDate(), DayOfWeek.FRIDAY,
+                shift.getStartTime(), shift.getEndTime())).thenReturn(true);
+
+        assertTrue(employeeService.isEligibleForShift(candidateId, shift));
+    }
+
+    private Shift buildShift(LocalDate shiftDate) {
+        return Shift.builder()
+                .id(UUID.randomUUID())
+                .employee(Employee.builder().id(id).build())
+                .shiftDate(shiftDate)
+                .startTime(LocalTime.of(8, 0))
+                .endTime(LocalTime.of(16, 0))
+                .status(ShiftStatus.SCHEDULED)
+                .build();
     }
 }

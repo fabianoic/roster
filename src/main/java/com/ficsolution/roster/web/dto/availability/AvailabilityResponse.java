@@ -1,6 +1,7 @@
 package com.ficsolution.roster.web.dto.availability;
 
 import com.ficsolution.roster.model.Availability;
+import com.ficsolution.roster.web.dto.common.EmployeeSummary;
 
 import java.time.DayOfWeek;
 import java.time.LocalTime;

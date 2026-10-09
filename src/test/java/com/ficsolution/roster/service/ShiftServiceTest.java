@@ -1,6 +1,7 @@
 package com.ficsolution.roster.service;
 
 import com.ficsolution.roster.exception.ObjectConflictException;
+import com.ficsolution.roster.exception.ObjectNotFoundException;
 import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.model.Role;
 import com.ficsolution.roster.model.Shift;
@@ -126,13 +127,35 @@ public class ShiftServiceTest {
                 LocalDateTime.now(),
                 LocalDateTime.now());
         List<Shift> shifts = List.of(existingShift);
-        when(shiftRepository.findByEmployeeIdAndShiftDate(employee.getId(), LocalDate.now())).thenReturn(shifts);
+        when(shiftRepository.findByEmployeeIdAndShiftDateAndStatusNot(employee.getId(), LocalDate.now(), ShiftStatus.CANCELED)).thenReturn(shifts);
 
         assertThrows(ObjectConflictException.class, () -> shiftService.createShift(shift));
         verify(employeeService, times(0)).retrieveEmployeeById(employee.getId());
         verify(storeService, times(0)).retrieveStoreById(store.getId());
         verify(shiftRepository, times(0)).save(existingShift);
-        verify(shiftRepository, times(1)).findByEmployeeIdAndShiftDate(employee.getId(), LocalDate.now());
+        verify(shiftRepository, times(1)).findByEmployeeIdAndShiftDateAndStatusNot(employee.getId(), LocalDate.now(), ShiftStatus.CANCELED);
+    }
+
+    @Test
+    void testCreateShift_ignoresCanceledShiftsWhenCheckingConflicts() {
+        Shift newShift = new Shift(
+                null,
+                employee,
+                store,
+                LocalDate.now(),
+                LocalTime.of(8, 0),
+                LocalTime.of(16, 0),
+                ShiftStatus.SCHEDULED,
+                LocalDateTime.now(),
+                LocalDateTime.now());
+        when(shiftRepository.save(newShift)).thenReturn(newShift);
+        when(employeeService.retrieveEmployeeById(employee.getId())).thenReturn(employee);
+        when(storeService.retrieveStoreById(store.getId())).thenReturn(store);
+
+        shiftService.createShift(newShift);
+
+        verify(shiftRepository, times(1)).findByEmployeeIdAndShiftDateAndStatusNot(employee.getId(), LocalDate.now(), ShiftStatus.CANCELED);
+        verify(shiftRepository, times(1)).save(newShift);
     }
 
     @Test
@@ -236,6 +259,7 @@ public class ShiftServiceTest {
                 null);
         when(shiftRepository.findById(id)).thenReturn(Optional.of(shift));
         when(employeeService.retrieveEmployeeById(newEmployee.getId())).thenReturn(newEmployee);
+        when(employeeService.isEligibleForShift(newEmployee.getId(), shift)).thenReturn(true);
         when(shiftRepository.save(any(Shift.class))).thenReturn(shift);
 
         Shift swappedShift = shiftService.swapShiftEmployee(id, newEmployee.getId());
@@ -244,35 +268,69 @@ public class ShiftServiceTest {
         assertEquals(newEmployee.getId(), swappedShift.getEmployee().getId());
         verify(shiftRepository, times(1)).findById(id);
         verify(employeeService, times(1)).retrieveEmployeeById(newEmployee.getId());
+        verify(employeeService, times(1)).isEligibleForShift(newEmployee.getId(), shift);
     }
 
     @Test
-    void testSwapShift_conflictShift() {
-        Employee newEmployee = new Employee(UUID.randomUUID(), "Fabiano Campos",
-                "fabiano.fic@gmail.com",
-                "RANDOMHASHPASSWORD",
-                new Role(UUID.fromString("df501f58-dc8a-470c-a26d-5786633b6009"), "STAFF"),
-                EmployeeStatus.ACTIVE,
-                LocalDateTime.now(),
-                LocalDateTime.now(),
-                false,
-                0,
-                null);
-
-        Shift otherShift = new Shift(
-                id,
-                employee,
-                store,
-                LocalDate.now(),
-                LocalTime.of(10, 0),
-                LocalTime.of(18, 0),
-                ShiftStatus.SCHEDULED,
-                LocalDateTime.now(),
-                LocalDateTime.now());
+    void testSwapShift_employeeNotEligible() {
+        Employee newEmployee = Employee.builder().id(UUID.randomUUID()).name("Bruno Costa").build();
         when(shiftRepository.findById(id)).thenReturn(Optional.of(shift));
-        when(shiftRepository.findByEmployeeIdAndShiftDate(any(), any())).thenReturn(List.of(otherShift));
+        when(employeeService.retrieveEmployeeById(newEmployee.getId())).thenReturn(newEmployee);
+        when(employeeService.isEligibleForShift(newEmployee.getId(), shift)).thenReturn(false);
 
         assertThrows(ObjectConflictException.class, () -> shiftService.swapShiftEmployee(id, newEmployee.getId()));
-        verify(shiftRepository, times(1)).findByEmployeeIdAndShiftDate(any(), any());
+        verify(shiftRepository, never()).save(any());
+    }
+
+    @Test
+    void testSwapShift_employeeNotFound() {
+        UUID unknownEmployeeId = UUID.randomUUID();
+        when(shiftRepository.findById(id)).thenReturn(Optional.of(shift));
+        when(employeeService.retrieveEmployeeById(unknownEmployeeId))
+                .thenThrow(new ObjectNotFoundException("Employee", unknownEmployeeId.toString()));
+
+        assertThrows(ObjectNotFoundException.class, () -> shiftService.swapShiftEmployee(id, unknownEmployeeId));
+        verify(employeeService, never()).isEligibleForShift(any(), any());
+        verify(shiftRepository, never()).save(any());
+    }
+
+    @Test
+    void mustReturnAListOfCandidatesToSwapShift() {
+        List<Employee> candidates = List.of(
+                Employee.builder().id(UUID.randomUUID()).name("Name example 1").build(),
+                Employee.builder().id(UUID.randomUUID()).name("Name example 2").build()
+        );
+        when(employeeService.retrieveCandidatesToAShift(shift)).thenReturn(candidates);
+
+        List<Employee> retrievedCandidates = shiftService.retrieveCandidatesToSwapShift(shift);
+
+        assertEquals(2, retrievedCandidates.size());
+        assertEquals(candidates, retrievedCandidates);
+        verify(employeeService, times(1)).retrieveCandidatesToAShift(shift);
+    }
+
+    @Test
+    void mustReturnAnEmptyListWhenThereAreNoCandidatesToSwapShift() {
+        when(employeeService.retrieveCandidatesToAShift(shift)).thenReturn(List.of());
+
+        List<Employee> retrievedCandidates = shiftService.retrieveCandidatesToSwapShift(shift);
+
+        assertTrue(retrievedCandidates.isEmpty());
+    }
+
+    @Test
+    void mustThrowConflictWhenRetrievingCandidatesOfACompletedShift() {
+        Shift completedShift = Shift.builder().id(UUID.randomUUID()).status(ShiftStatus.COMPLETED).build();
+
+        assertThrows(ObjectConflictException.class, () -> shiftService.retrieveCandidatesToSwapShift(completedShift));
+        verify(employeeService, never()).retrieveCandidatesToAShift(any());
+    }
+
+    @Test
+    void mustThrowConflictWhenRetrievingCandidatesOfACanceledShift() {
+        Shift canceledShift = Shift.builder().id(UUID.randomUUID()).status(ShiftStatus.CANCELED).build();
+
+        assertThrows(ObjectConflictException.class, () -> shiftService.retrieveCandidatesToSwapShift(canceledShift));
+        verify(employeeService, never()).retrieveCandidatesToAShift(any());
     }
 }

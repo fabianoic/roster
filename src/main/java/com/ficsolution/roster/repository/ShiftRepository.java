@@ -1,6 +1,7 @@
 package com.ficsolution.roster.repository;
 
 import com.ficsolution.roster.model.Shift;
+import com.ficsolution.roster.model.enums.ShiftStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -17,7 +18,7 @@ import java.util.UUID;
 @Repository
 public interface ShiftRepository extends JpaRepository<Shift, UUID>, JpaSpecificationExecutor<Shift> {
 
-    List<Shift> findByEmployeeIdAndShiftDate(UUID id, LocalDate day);
+    List<Shift> findByEmployeeIdAndShiftDateAndStatusNot(UUID id, LocalDate day, ShiftStatus status);
 
     @EntityGraph(attributePaths = {"employee", "store"})
     Page<Shift> findAll(Specification<Shift> spec, Pageable pageable);

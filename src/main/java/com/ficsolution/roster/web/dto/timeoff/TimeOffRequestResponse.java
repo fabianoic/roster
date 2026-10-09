@@ -3,6 +3,7 @@ package com.ficsolution.roster.web.dto.timeoff;
 import com.ficsolution.roster.model.TimeOffRequest;
 import com.ficsolution.roster.model.enums.RequestStatus;
 import com.ficsolution.roster.model.enums.TimeOffRequestType;
+import com.ficsolution.roster.web.dto.common.EmployeeSummary;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;

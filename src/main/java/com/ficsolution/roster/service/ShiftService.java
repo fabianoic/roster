@@ -5,6 +5,7 @@ import com.ficsolution.roster.exception.ObjectNotFoundException;
 import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.model.Shift;
 import com.ficsolution.roster.model.Store;
+import com.ficsolution.roster.model.enums.ShiftStatus;
 import com.ficsolution.roster.repository.ShiftRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -13,7 +14,6 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -75,17 +75,28 @@ public class ShiftService {
     @Transactional
     public Shift swapShiftEmployee(UUID shiftId, UUID employeeId) {
         Shift shift = retrieveShiftById(shiftId);
-        validConflictShiftDateAndTime(employeeId, shift);
-
         Employee employee = employeeService.retrieveEmployeeById(employeeId);
+
+        if (!employeeService.isEligibleForShift(employeeId, shift)) {
+            throw new ObjectConflictException("Employee", "Employee is not available for this shift: conflicting shift, approved time off or availability restriction");
+        }
 
         shift.setEmployee(employee);
 
         return shiftRepository.save(shift);
     }
 
+    @Transactional(readOnly = true)
+    public List<Employee> retrieveCandidatesToSwapShift(Shift shift) {
+        if (shift.getStatus() != ShiftStatus.SCHEDULED) {
+            throw new ObjectConflictException("Shift", "The action of Retrieve candidates for this request is not allowed. Need to be a SCHEDULED shift");
+        }
+
+        return employeeService.retrieveCandidatesToAShift(shift);
+    }
+
     private void validConflictShiftDateAndTime(UUID employeeId, Shift shift) {
-        List<Shift> shifts = shiftRepository.findByEmployeeIdAndShiftDate(employeeId, shift.getShiftDate());
+        List<Shift> shifts = shiftRepository.findByEmployeeIdAndShiftDateAndStatusNot(employeeId, shift.getShiftDate(), ShiftStatus.CANCELED);
 
         if (shifts.stream().anyMatch(existingShift -> isOverlapping(existingShift, shift))) {
             throw new ObjectConflictException("ShiftTime", "There are conflicts shift time");

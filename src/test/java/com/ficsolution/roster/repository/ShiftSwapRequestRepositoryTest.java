@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
 import com.ficsolution.roster.TestcontainersConfiguration;
 
 import java.time.LocalDateTime;
@@ -73,6 +74,62 @@ public class ShiftSwapRequestRepositoryTest {
 
         assertFalse(shiftSwapRequestList.isEmpty());
         assertEquals(RequestStatus.PENDING, shiftSwapRequestList.getFirst().getStatus());
+    }
+
+    @Test
+    void testExistsByShiftIdAndStatus() {
+        UUID pendingShiftId = shiftSwapRequestRepository.findById(shiftSwapRequestId).get().getShift().getId();
+
+        assertTrue(shiftSwapRequestRepository.existsByShiftIdAndStatus(pendingShiftId, RequestStatus.PENDING));
+        assertFalse(shiftSwapRequestRepository.existsByShiftIdAndStatus(pendingShiftId, RequestStatus.APPROVED));
+        assertFalse(shiftSwapRequestRepository.existsByShiftIdAndStatus(UUID.randomUUID(), RequestStatus.PENDING));
+    }
+
+    @Test
+    void testExistsByShiftIdAndStatus_afterStatusChange() {
+        ShiftSwapRequest shiftSwapRequest = shiftSwapRequestRepository.findById(shiftSwapRequestId).get();
+        UUID pendingShiftId = shiftSwapRequest.getShift().getId();
+        shiftSwapRequest.setStatus(RequestStatus.REJECTED);
+        shiftSwapRequestRepository.saveAndFlush(shiftSwapRequest);
+
+        assertFalse(shiftSwapRequestRepository.existsByShiftIdAndStatus(pendingShiftId, RequestStatus.PENDING));
+        assertTrue(shiftSwapRequestRepository.existsByShiftIdAndStatus(pendingShiftId, RequestStatus.REJECTED));
+    }
+
+    @Test
+    void testCreateSecondPendingShiftSwapRequestForSameShift_violatesUniqueIndex() {
+        ShiftSwapRequest pending = shiftSwapRequestRepository.findById(shiftSwapRequestId).get();
+        ShiftSwapRequest duplicate = new ShiftSwapRequest(
+                null,
+                pending.getShift(),
+                pending.getRequester(),
+                pending.getTarget(),
+                RequestStatus.PENDING,
+                LocalDateTime.now(),
+                LocalDateTime.now()
+        );
+
+        DataIntegrityViolationException ex = assertThrows(DataIntegrityViolationException.class,
+                () -> shiftSwapRequestRepository.saveAndFlush(duplicate));
+        assertTrue(ex.getMessage().contains("uq_swap_pending_shift"));
+    }
+
+    @Test
+    void testCreateNonPendingShiftSwapRequestForShiftWithPendingRequest() {
+        ShiftSwapRequest pending = shiftSwapRequestRepository.findById(shiftSwapRequestId).get();
+        ShiftSwapRequest rejected = new ShiftSwapRequest(
+                null,
+                pending.getShift(),
+                pending.getRequester(),
+                pending.getTarget(),
+                RequestStatus.REJECTED,
+                LocalDateTime.now(),
+                LocalDateTime.now()
+        );
+
+        ShiftSwapRequest saved = shiftSwapRequestRepository.saveAndFlush(rejected);
+
+        assertNotNull(saved.getId());
     }
 
     @Test

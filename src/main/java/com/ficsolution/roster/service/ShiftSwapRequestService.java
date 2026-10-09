@@ -8,6 +8,8 @@ import com.ficsolution.roster.model.ShiftSwapRequest;
 import com.ficsolution.roster.model.enums.RequestStatus;
 import com.ficsolution.roster.repository.ShiftSwapRequestRepository;
 import lombok.AllArgsConstructor;
+import org.hibernate.exception.ConstraintViolationException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +22,8 @@ import java.util.UUID;
 @AllArgsConstructor
 public class ShiftSwapRequestService {
 
+    private static final String PENDING_SHIFT_CONSTRAINT = "uq_swap_pending_shift";
+
     private final ShiftSwapRequestRepository shiftSwapRequestRepository;
     private final ShiftService shiftService;
     private final EmployeeService employeeService;
@@ -30,6 +34,8 @@ public class ShiftSwapRequestService {
 
         if (!shift.getEmployee().getId().equals(shiftSwapRequest.getRequester().getId())) {
             throw new ObjectConflictException("shift", "This shift is not from the requester employee. id: " + shift.getId());
+        } else if(shiftSwapRequestRepository.existsByShiftIdAndStatus(shift.getId(), RequestStatus.PENDING)) {
+            throw new ObjectConflictException("shift", "There is already a swap request to this shift. id: " + shift.getId());
         }
 
         Employee requester = employeeService.retrieveEmployeeById(shiftSwapRequest.getRequester().getId());
@@ -42,7 +48,16 @@ public class ShiftSwapRequestService {
         shiftSwapRequest.setCreatedAt(LocalDateTime.now());
         shiftSwapRequest.setUpdatedAt(LocalDateTime.now());
 
-        return shiftSwapRequestRepository.save(shiftSwapRequest);
+        try {
+            // flush so a concurrent duplicate hits the unique index here instead of at commit time
+            return shiftSwapRequestRepository.saveAndFlush(shiftSwapRequest);
+        } catch (DataIntegrityViolationException ex) {
+            if (ex.getCause() instanceof ConstraintViolationException cve
+                    && PENDING_SHIFT_CONSTRAINT.equalsIgnoreCase(cve.getConstraintName())) {
+                throw new ObjectConflictException("shift", "There is already a swap request to this shift. id: " + shift.getId());
+            }
+            throw ex;
+        }
     }
 
     @Transactional(readOnly = true)

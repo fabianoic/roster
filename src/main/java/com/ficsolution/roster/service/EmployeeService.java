@@ -4,6 +4,7 @@ import com.ficsolution.roster.exception.ObjectConflictException;
 import com.ficsolution.roster.exception.ObjectNotFoundException;
 import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.model.Role;
+import com.ficsolution.roster.model.Shift;
 import com.ficsolution.roster.model.enums.EmployeeStatus;
 import com.ficsolution.roster.repository.EmployeeRepository;
 import com.ficsolution.roster.web.dto.employee.ChangePasswordRequest;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -136,5 +138,25 @@ public class EmployeeService {
                 employee.setLockTime(LocalDateTime.now());
             }
         }
+    }
+
+    @Transactional(readOnly = true)
+    public List<Employee> retrieveCandidatesToAShift(Shift shift) {
+        return employeeRepository.findEligibleForShift(
+                shift.getEmployee().getId(),
+                shift.getShiftDate(),
+                shift.getShiftDate().getDayOfWeek(),
+                shift.getStartTime(),
+                shift.getEndTime());
+    }
+
+    @Transactional(readOnly = true)
+    public boolean isEligibleForShift(UUID employeeId, Shift shift) {
+        return employeeRepository.isEligibleForShift(
+                employeeId,
+                shift.getShiftDate(),
+                shift.getShiftDate().getDayOfWeek(),
+                shift.getStartTime(),
+                shift.getEndTime());
     }
 }
