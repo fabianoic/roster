@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -40,7 +41,7 @@ public class ShiftController {
     }
 
     @GetMapping
-    public ResponseEntity<PagedResponse<ShiftResponse>> retrieveAllShifts(@ModelAttribute ShiftFilter filter, Pageable pageable) {
+    public ResponseEntity<PagedResponse<ShiftResponse>> retrieveAllShifts(@ModelAttribute ShiftFilter filter, @PageableDefault(sort = {"shiftDate", "startTime"}) Pageable pageable) {
         Specification<Shift> specification = Specification.allOf(
                 ShiftSpecification.hasEmployeeId(filter.employeeId()),
                 ShiftSpecification.hasStoreId(filter.storeId()),
