@@ -34,6 +34,7 @@ public class Employee {
     private Role role;
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
+    @Builder.Default
     private EmployeeStatus status = EmployeeStatus.ACTIVE;
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -43,8 +44,10 @@ public class Employee {
     private LocalDateTime updatedAt;
 
     @Column(name = "account_locked", nullable = false)
+    @Builder.Default
     private boolean accountLocked = false;
     @Column(name = "failed_attempt")
+    @Builder.Default
     private int failedAttempt = 0;
     @Column(name = "lock_time")
     private LocalDateTime lockTime;

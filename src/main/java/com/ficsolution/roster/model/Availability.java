@@ -26,6 +26,7 @@ public class Availability {
     @Convert(converter = DayOfWeekConverter.class)
     private DayOfWeek weekday;
     @Column(name = "is_available", nullable = false)
+    @Builder.Default
     private boolean isAvailable = false;
     private String note;
     @Column(name = "start_time", nullable = false)

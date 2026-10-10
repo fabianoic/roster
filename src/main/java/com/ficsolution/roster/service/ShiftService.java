@@ -36,6 +36,7 @@ public class ShiftService {
 
         shift.setEmployee(employee);
         shift.setStore(store);
+        shift.setStatus(ShiftStatus.SCHEDULED);
 
         return shiftRepository.save(shift);
     }
@@ -61,7 +62,7 @@ public class ShiftService {
         validShiftTime(newShift);
         Shift shift = retrieveShiftById(id);
         if (shift.getStatus().equals(ShiftStatus.CANCELED)) {
-            throw new OperationException("Shift", "Operation not permitted, it's not possible to change canceled shift");
+            throw new OperationException("Shift", "Operation not permitted, it's not possible to update a canceled shift");
         } else if (!newShift.getStatus().equals(ShiftStatus.CANCELED)) {
             shift.setEndTime(newShift.getEndTime());
             shift.setStartTime(newShift.getStartTime());
