@@ -2,6 +2,7 @@ package com.ficsolution.roster.service;
 
 import com.ficsolution.roster.exception.ObjectConflictException;
 import com.ficsolution.roster.exception.ObjectNotFoundException;
+import com.ficsolution.roster.exception.OperationException;
 import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.model.Shift;
 import com.ficsolution.roster.model.Store;
@@ -14,7 +15,6 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -28,11 +28,11 @@ public class ShiftService {
 
     @Transactional
     public Shift createShift(Shift shift) {
-        validShiftTime(shift);
-        validConflictShiftDateAndTime(shift.getEmployee().getId(), shift);
-
         Employee employee = employeeService.retrieveEmployeeById(shift.getEmployee().getId());
         Store store = storeService.retrieveStoreById(shift.getStore().getId());
+
+        validShiftTime(shift);
+        validConflictShiftDateAndTime(shift.getEmployee().getId(), shift);
 
         shift.setEmployee(employee);
         shift.setStore(store);
@@ -42,7 +42,7 @@ public class ShiftService {
 
     private static void validShiftTime(Shift shift) {
         if (shift.getStartTime().isAfter(shift.getEndTime()) || shift.getStartTime().equals(shift.getEndTime())) {
-            throw new ObjectConflictException("ShiftTime", "Start and End of shift time need to be a valid time.");
+            throw new OperationException("Shift", "Start and End of shift time need to be a valid time.");
         }
     }
 
@@ -60,14 +60,18 @@ public class ShiftService {
     public Shift updateShiftInfo(UUID id, Shift newShift) {
         validShiftTime(newShift);
         Shift shift = retrieveShiftById(id);
+        if (shift.getStatus().equals(ShiftStatus.CANCELED)) {
+            throw new OperationException("Shift", "Operation not permitted, it's not possible to change canceled shift");
+        } else if (!newShift.getStatus().equals(ShiftStatus.CANCELED)) {
+            shift.setEndTime(newShift.getEndTime());
+            shift.setStartTime(newShift.getStartTime());
+            validConflictShiftDateAndTime(shift.getEmployee().getId(), shift);
 
-        if (!shift.getStore().getId().equals(newShift.getStore().getId())) {
-            shift.setStore(storeService.retrieveStoreById(newShift.getStore().getId()));
+            if (!shift.getStore().getId().equals(newShift.getStore().getId())) {
+                shift.setStore(storeService.retrieveStoreById(newShift.getStore().getId()));
+            }
         }
         shift.setStatus(newShift.getStatus());
-        shift.setStartTime(newShift.getStartTime());
-        shift.setEndTime(newShift.getEndTime());
-        shift.setUpdatedAt(LocalDateTime.now());
 
         return shiftRepository.save(shift);
     }
@@ -98,7 +102,7 @@ public class ShiftService {
     private void validConflictShiftDateAndTime(UUID employeeId, Shift shift) {
         List<Shift> shifts = shiftRepository.findByEmployeeIdAndShiftDateAndStatusNot(employeeId, shift.getShiftDate(), ShiftStatus.CANCELED);
 
-        if (shifts.stream().anyMatch(existingShift -> isOverlapping(existingShift, shift))) {
+        if (shifts.stream().filter(s -> !s.getId().equals(shift.getId())).anyMatch(existingShift -> isOverlapping(existingShift, shift))) {
             throw new ObjectConflictException("ShiftTime", "There are conflicts shift time");
         }
     }

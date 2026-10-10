@@ -2,6 +2,7 @@ package com.ficsolution.roster.web.handler;
 
 import com.ficsolution.roster.exception.ObjectConflictException;
 import com.ficsolution.roster.exception.ObjectNotFoundException;
+import com.ficsolution.roster.exception.OperationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
@@ -68,6 +69,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(PropertyReferenceException.class)
     public ProblemDetail handlePropertyReference(PropertyReferenceException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    @ExceptionHandler(OperationException.class)
+    public ProblemDetail handleOperation(OperationException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 }

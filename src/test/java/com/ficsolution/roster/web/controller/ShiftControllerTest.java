@@ -387,4 +387,17 @@ public class ShiftControllerTest {
                         .with(Util.authority))
                 .andExpect(status().isNotFound());
     }
+
+    @Test
+    void mustReturn400WhenUpdatingShiftStartTimeAfterEndTime() throws Exception {
+        UUID id = UUID.randomUUID();
+        UpdateShiftRequest update = new UpdateShiftRequest(
+                UUID.randomUUID(), ShiftStatus.COMPLETED, LocalTime.of(18, 0), LocalTime.of(10, 0));
+
+        mockMvc.perform(put(String.format("%s/%s", path, id))
+                        .with(Util.authority)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(update)))
+                .andExpect(status().isBadRequest());
+    }
 }
