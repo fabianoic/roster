@@ -1,6 +1,5 @@
 package com.ficsolution.roster.web.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ficsolution.roster.config.JwtConfig;
 import com.ficsolution.roster.config.SecurityConfig;
 import com.ficsolution.roster.exception.ObjectNotFoundException;
@@ -19,6 +18,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -30,9 +30,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(TimeOffRequestController.class)
 @Import({SecurityConfig.class, JwtConfig.class})
@@ -44,7 +42,8 @@ public class TimeOffRequestControllerTest {
     @MockitoBean
     private TimeOffRequestService timeOffRequestService;
 
-    private final ObjectMapper mapper = new ObjectMapper();
+    @Autowired
+    private JsonMapper mapper;
     private final String path = "/time-off-requests";
 
     private TimeOffRequest buildTimeOffRequest(UUID id, RequestStatus status) {

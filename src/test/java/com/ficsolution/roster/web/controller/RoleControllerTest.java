@@ -1,6 +1,6 @@
 package com.ficsolution.roster.web.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import com.ficsolution.roster.config.JwtConfig;
 import com.ficsolution.roster.config.SecurityConfig;
 import com.ficsolution.roster.exception.ObjectNotFoundException;
@@ -36,7 +36,8 @@ public class RoleControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    private final ObjectMapper mapper = new ObjectMapper();
+    @Autowired
+    private JsonMapper mapper;
 
     @MockitoBean
     private RoleService roleService;

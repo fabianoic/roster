@@ -1,6 +1,5 @@
 package com.ficsolution.roster.web.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ficsolution.roster.config.JwtConfig;
 import com.ficsolution.roster.config.SecurityConfig;
 import com.ficsolution.roster.exception.ObjectNotFoundException;
@@ -17,6 +16,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.time.DayOfWeek;
 import java.time.LocalTime;
@@ -42,7 +42,8 @@ public class AvailabilityControllerTest {
     @MockitoBean
     private AvailabilityService availabilityService;
 
-    private final ObjectMapper mapper = new ObjectMapper();
+    @Autowired
+    private JsonMapper mapper;
     private final String path = "/availabilities";
 
     private Availability buildAvailability(UUID id, DayOfWeek weekday, boolean isAvailable) {

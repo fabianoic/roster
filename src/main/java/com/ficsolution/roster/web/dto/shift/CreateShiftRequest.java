@@ -1,31 +1,21 @@
 package com.ficsolution.roster.web.dto.shift;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateDeserializer;
-import com.fasterxml.jackson.datatype.jsr310.deser.LocalTimeDeserializer;
-import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateSerializer;
-import com.fasterxml.jackson.datatype.jsr310.ser.LocalTimeSerializer;
 import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.model.Shift;
 import com.ficsolution.roster.model.Store;
+import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.UUID;
 
 public record CreateShiftRequest(
-        UUID employeeId,
-        UUID storeId,
-        @JsonSerialize(using = LocalDateSerializer.class)
-        @JsonDeserialize(using = LocalDateDeserializer.class)
-        LocalDate shiftDate,
-        @JsonSerialize(using = LocalTimeSerializer.class)
-        @JsonDeserialize(using = LocalTimeDeserializer.class)
-        LocalTime startTime,
-        @JsonSerialize(using = LocalTimeSerializer.class)
-        @JsonDeserialize(using = LocalTimeDeserializer.class)
-        LocalTime endTime
+        @NotNull UUID employeeId,
+        @NotNull UUID storeId,
+        @NotNull LocalDate shiftDate,
+        @NotNull LocalTime startTime,
+        @NotNull LocalTime endTime
 ) {
     public Shift toEntity() {
         return Shift.builder()
@@ -35,5 +25,12 @@ public record CreateShiftRequest(
                 .startTime(startTime)
                 .endTime(endTime)
                 .build();
+    }
+
+    @AssertTrue(message = "endTime must be after startTime")
+    boolean isEndAfterStart() {
+        return endTime == null ||
+                startTime == null ||
+                endTime.isAfter(startTime);
     }
 }

@@ -1,6 +1,5 @@
 package com.ficsolution.roster.web.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ficsolution.roster.config.JwtConfig;
 import com.ficsolution.roster.config.SecurityConfig;
 import com.ficsolution.roster.exception.ObjectConflictException;
@@ -23,6 +22,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -33,13 +33,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.doNothing;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(ShiftSwapRequestController.class)
 @Import({SecurityConfig.class, JwtConfig.class})
@@ -51,7 +46,8 @@ public class ShiftSwapRequestControllerTest {
     @MockitoBean
     private ShiftSwapRequestService shiftSwapRequestService;
 
-    private final ObjectMapper mapper = new ObjectMapper();
+    @Autowired
+    private JsonMapper mapper;
 
     private ShiftSwapRequest buildShiftSwapRequest(RequestStatus status) {
         Store store = Store.builder()
@@ -104,7 +100,7 @@ public class ShiftSwapRequestControllerTest {
 
     @Test
     void mustReturn400WhenCreateRequestHasMissingFields() throws Exception {
-        CreateSwapRequest request = new CreateSwapRequest( null, Util.employee1Id);
+        CreateSwapRequest request = new CreateSwapRequest(null, Util.employee1Id);
 
         mockMvc.perform(post(String.format("/shifts/%s/swap-requests", Util.shiftId))
                         .with(Util.authority)

@@ -1,6 +1,5 @@
 package com.ficsolution.roster.web.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ficsolution.roster.config.JwtConfig;
 import com.ficsolution.roster.config.SecurityConfig;
 import com.ficsolution.roster.exception.ObjectConflictException;
@@ -28,6 +27,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -57,7 +57,8 @@ public class ShiftControllerTest {
     @MockitoBean
     private ShiftService shiftService;
 
-    private final ObjectMapper mapper = new ObjectMapper();
+    @Autowired
+    private JsonMapper mapper;
     private final String path = "/shifts";
 
     private static UUID id = UUID.randomUUID();
