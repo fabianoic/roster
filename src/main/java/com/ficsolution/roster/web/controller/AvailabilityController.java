@@ -1,19 +1,25 @@
 package com.ficsolution.roster.web.controller;
 
 import com.ficsolution.roster.model.Availability;
+import com.ficsolution.roster.repository.specification.AvailabilitySpecification;
 import com.ficsolution.roster.security.Permissions;
 import com.ficsolution.roster.security.SecurityUtil;
 import com.ficsolution.roster.service.AvailabilityService;
+import com.ficsolution.roster.web.dto.availability.AvailabilityFilter;
 import com.ficsolution.roster.web.dto.availability.AvailabilityResponse;
 import com.ficsolution.roster.web.dto.availability.CreateAvailabilityRequest;
 import com.ficsolution.roster.web.dto.availability.UpdateAvailabilityRequest;
+import com.ficsolution.roster.web.dto.common.PagedResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -32,21 +38,20 @@ public class AvailabilityController {
     }
 
     @GetMapping
-    public ResponseEntity<List<AvailabilityResponse>> retrieveAllAvailabilities() {
-        SecurityUtil.requirePermission(Permissions.AVAILABILITY_ANY);
-        List<AvailabilityResponse> responses = availabilityService.findAllAvailabilities().stream()
-                .map(AvailabilityResponse::from)
-                .toList();
-        return ResponseEntity.ok(responses);
-    }
-
-    @GetMapping(params = "employeeId")
-    public ResponseEntity<List<AvailabilityResponse>> retrieveAvailabilitiesByEmployeeId(@RequestParam UUID employeeId) {
-        SecurityUtil.requireOwnershipOrPermission(employeeId, Permissions.AVAILABILITY_ANY);
-        List<AvailabilityResponse> responses = availabilityService.retrieveAllAvailabilityByEmployeeId(employeeId).stream()
-                .map(AvailabilityResponse::from)
-                .toList();
-        return ResponseEntity.ok(responses);
+    public ResponseEntity<PagedResponse<AvailabilityResponse>> retrieveAllAvailabilities(@ModelAttribute AvailabilityFilter filter, @PageableDefault(sort = {"weekday", "startTime"}) Pageable pageable) {
+        // Without AVAILABILITY_ANY the listing must be scoped to the logged employee
+        if (filter.employeeId() == null) {
+            SecurityUtil.requirePermission(Permissions.AVAILABILITY_ANY);
+        } else {
+            SecurityUtil.requireOwnershipOrPermission(filter.employeeId(), Permissions.AVAILABILITY_ANY);
+        }
+        Specification<Availability> specification = Specification.allOf(
+                AvailabilitySpecification.hasEmployeeId(filter.employeeId()),
+                AvailabilitySpecification.hasWeekday(filter.weekday()),
+                AvailabilitySpecification.isAvailable(filter.available())
+        );
+        Page<Availability> availabilities = availabilityService.retrieveAllAvailabilities(specification, pageable);
+        return ResponseEntity.ok(PagedResponse.from(availabilities.map(AvailabilityResponse::from)));
     }
 
     @GetMapping("/{id}")

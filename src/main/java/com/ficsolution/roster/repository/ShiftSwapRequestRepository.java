@@ -3,13 +3,14 @@ package com.ficsolution.roster.repository;
 import com.ficsolution.roster.model.ShiftSwapRequest;
 import com.ficsolution.roster.model.enums.RequestStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.UUID;
 
 @Repository
-public interface ShiftSwapRequestRepository extends JpaRepository<ShiftSwapRequest, UUID> {
+public interface ShiftSwapRequestRepository extends JpaRepository<ShiftSwapRequest, UUID>, JpaSpecificationExecutor<ShiftSwapRequest> {
     List<ShiftSwapRequest> findByRequesterId(UUID employeeId);
     boolean existsByShiftIdAndStatus(UUID shiftId, RequestStatus status);
 }

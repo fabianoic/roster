@@ -10,12 +10,14 @@ import com.ficsolution.roster.repository.ShiftSwapRequestRepository;
 import lombok.AllArgsConstructor;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -61,8 +63,8 @@ public class ShiftSwapRequestService {
     }
 
     @Transactional(readOnly = true)
-    public List<ShiftSwapRequest> retrieveAllShiftSwapRequests() {
-        return shiftSwapRequestRepository.findAll();
+    public Page<ShiftSwapRequest> retrieveAllShiftSwapRequests(Specification<ShiftSwapRequest> specification, Pageable pageable) {
+        return shiftSwapRequestRepository.findAll(specification, pageable);
     }
 
     @Transactional(readOnly = true)

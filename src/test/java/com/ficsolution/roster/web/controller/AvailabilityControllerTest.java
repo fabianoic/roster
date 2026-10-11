@@ -13,6 +13,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -24,8 +26,10 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.hamcrest.Matchers.hasSize;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.doNothing;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -133,24 +137,24 @@ public class AvailabilityControllerTest {
                 buildAvailability(UUID.randomUUID(), DayOfWeek.THURSDAY, false),
                 buildAvailability(UUID.randomUUID(), DayOfWeek.FRIDAY, true)
         );
-        given(availabilityService.findAllAvailabilities()).willReturn(availabilities);
+        given(availabilityService.retrieveAllAvailabilities(any(), any())).willReturn(new PageImpl<>(availabilities));
 
         mockMvc.perform(get(path)
                         .with(Util.authority))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.*", hasSize(2)));
+                .andExpect(jsonPath("$.content", hasSize(2)));
     }
 
     @Test
     void mustRetrieveAvailabilitiesByEmployeeId() throws Exception {
         List<Availability> availabilities = List.of(buildAvailability(UUID.randomUUID(), DayOfWeek.THURSDAY, false));
-        given(availabilityService.retrieveAllAvailabilityByEmployeeId(Util.employeeId)).willReturn(availabilities);
+        given(availabilityService.retrieveAllAvailabilities(any(), any())).willReturn(new PageImpl<>(availabilities));
 
         mockMvc.perform(get(path)
                         .with(Util.authority)
                         .param("employeeId", Util.employeeId.toString()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.*", hasSize(1)));
+                .andExpect(jsonPath("$.content", hasSize(1)));
     }
 
     @Test
@@ -268,14 +272,14 @@ public class AvailabilityControllerTest {
 
     @Test
     void mustAllowStaffToListOwnAvailabilitiesByEmployeeId() throws Exception {
-        given(availabilityService.retrieveAllAvailabilityByEmployeeId(Util.employeeId))
-                .willReturn(List.of(buildAvailability(UUID.randomUUID(), DayOfWeek.THURSDAY, false)));
+        given(availabilityService.retrieveAllAvailabilities(any(), any()))
+                .willReturn(new PageImpl<>(List.of(buildAvailability(UUID.randomUUID(), DayOfWeek.THURSDAY, false))));
 
         mockMvc.perform(get(path)
                         .with(Util.staffAuthority)
                         .param("employeeId", Util.employeeId.toString()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.*", hasSize(1)));
+                .andExpect(jsonPath("$.content", hasSize(1)));
     }
 
     @Test
@@ -288,14 +292,14 @@ public class AvailabilityControllerTest {
 
     @Test
     void mustAllowSupervisorToListAvailabilitiesOfAnyEmployee() throws Exception {
-        given(availabilityService.retrieveAllAvailabilityByEmployeeId(Util.employeeId))
-                .willReturn(List.of(buildAvailability(UUID.randomUUID(), DayOfWeek.THURSDAY, false)));
+        given(availabilityService.retrieveAllAvailabilities(any(), any()))
+                .willReturn(new PageImpl<>(List.of(buildAvailability(UUID.randomUUID(), DayOfWeek.THURSDAY, false))));
 
         mockMvc.perform(get(path)
                         .with(Util.supervisorAuthority)
                         .param("employeeId", Util.employeeId.toString()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.*", hasSize(1)));
+                .andExpect(jsonPath("$.content", hasSize(1)));
     }
 
     @Test
@@ -416,5 +420,40 @@ public class AvailabilityControllerTest {
         mockMvc.perform(delete(String.format("%s/%s", path, id))
                         .with(Util.staffOtherAuthority))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void mustReturnPagedAvailabilitiesUsingRequestedPageAndDefaultSort() throws Exception {
+        given(availabilityService.retrieveAllAvailabilities(any(), any()))
+                .willAnswer(invocation -> new PageImpl<>(
+                        List.of(buildAvailability(UUID.randomUUID(), DayOfWeek.MONDAY, true)),
+                        invocation.getArgument(1),
+                        6));
+
+        mockMvc.perform(get(path)
+                        .with(Util.authority)
+                        .param("weekday", "MONDAY")
+                        .param("available", "true")
+                        .param("page", "1")
+                        .param("size", "5"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.page").value(1))
+                .andExpect(jsonPath("$.size").value(5))
+                .andExpect(jsonPath("$.totalElements").value(6))
+                .andExpect(jsonPath("$.totalPages").value(2));
+
+        then(availabilityService).should().retrieveAllAvailabilities(any(), argThat(pageable ->
+                pageable.getPageNumber() == 1
+                        && pageable.getPageSize() == 5
+                        && pageable.getSort().equals(Sort.by("weekday", "startTime"))));
+    }
+
+    @Test
+    void mustReturn400WhenListingAvailabilitiesWithInvalidWeekday() throws Exception {
+        mockMvc.perform(get(path)
+                        .with(Util.authority)
+                        .param("weekday", "FUNDAY"))
+                .andExpect(status().isBadRequest());
     }
 }

@@ -1,5 +1,7 @@
 package com.ficsolution.roster.web.dto.common;
 
+import org.springframework.data.domain.Page;
+
 import java.util.List;
 
 public record PagedResponse<T>(
@@ -8,4 +10,14 @@ public record PagedResponse<T>(
         int size,
         long totalElements,
         int totalPages
-) {}
+) {
+    public static <T> PagedResponse<T> from(Page<T> page) {
+        return new PagedResponse<>(
+                page.getContent(),
+                page.getNumber(),
+                page.getSize(),
+                page.getTotalElements(),
+                page.getTotalPages()
+        );
+    }
+}

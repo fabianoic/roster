@@ -11,6 +11,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.util.Arrays;
 import java.util.List;
@@ -43,14 +48,18 @@ public class RoleServiceTest {
                 new Role(UUID.randomUUID(), "KITCHEN PORTER"),
                 new Role(UUID.randomUUID(), "SUPERVISOR")
         );
-        when(roleRepository.findAll()).thenReturn(roles);
+        Specification<Role> specification = Specification.allOf();
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Role> page = new PageImpl<>(roles, pageable, roles.size());
+        when(roleRepository.findAll(specification, pageable)).thenReturn(page);
         // act
-        List<Role> retrievedRoles = roleService.retrieveAllRoles();
+        Page<Role> retrievedRoles = roleService.retrieveAllRoles(specification, pageable);
 
         // assert
         assertNotNull(retrievedRoles);
-        assertEquals(3, retrievedRoles.size());
-        verify(roleRepository, times(1)).findAll();
+        assertEquals(3, retrievedRoles.getContent().size());
+        assertEquals(3, retrievedRoles.getTotalElements());
+        verify(roleRepository, times(1)).findAll(specification, pageable);
     }
 
     @Test

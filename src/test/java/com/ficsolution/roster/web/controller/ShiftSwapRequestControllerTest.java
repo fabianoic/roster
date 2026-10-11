@@ -18,6 +18,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -27,12 +29,16 @@ import tools.jackson.databind.json.JsonMapper;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.List;
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.hasSize;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.never;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -359,5 +365,70 @@ public class ShiftSwapRequestControllerTest {
         mockMvc.perform(delete(String.format("/swap-requests/%s", Util.shiftSwapRequestId))
                         .with(Util.staffOtherAuthority))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void mustRetrieveAllShiftSwapRequestsWithSwapRequestAnyPermission() throws Exception {
+        given(shiftSwapRequestService.retrieveAllShiftSwapRequests(any(), any()))
+                .willReturn(new PageImpl<>(List.of(buildShiftSwapRequest(RequestStatus.PENDING))));
+
+        mockMvc.perform(get("/swap-requests")
+                        .with(Util.supervisorAuthority)
+                        .param("status", "PENDING"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.content[0].id").value(Util.shiftSwapRequestId.toString()))
+                .andExpect(jsonPath("$.totalElements").value(1));
+
+        then(shiftSwapRequestService).should().retrieveAllShiftSwapRequests(any(), argThat(pageable ->
+                pageable.getSort().equals(Sort.by(Sort.Direction.DESC, "createdAt"))));
+    }
+
+    @Test
+    void mustAllowStaffToListSwapRequestsWhereTheyAreRequester() throws Exception {
+        given(shiftSwapRequestService.retrieveAllShiftSwapRequests(any(), any()))
+                .willReturn(new PageImpl<>(List.of(buildShiftSwapRequest(RequestStatus.PENDING))));
+
+        mockMvc.perform(get("/swap-requests")
+                        .with(Util.staffAuthority)
+                        .param("requesterId", Util.employeeId.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(1)));
+    }
+
+    @Test
+    void mustAllowStaffToListSwapRequestsWhereTheyAreTarget() throws Exception {
+        given(shiftSwapRequestService.retrieveAllShiftSwapRequests(any(), any()))
+                .willReturn(new PageImpl<>(List.of(buildShiftSwapRequest(RequestStatus.PENDING))));
+
+        mockMvc.perform(get("/swap-requests")
+                        .with(Util.staffOtherAuthority)
+                        .param("targetId", Util.employee1Id.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(1)));
+    }
+
+    @Test
+    void mustReturn403WhenStaffListsAllSwapRequests() throws Exception {
+        mockMvc.perform(get("/swap-requests")
+                        .with(Util.staffAuthority))
+                .andExpect(status().isForbidden());
+
+        then(shiftSwapRequestService).should(never()).retrieveAllShiftSwapRequests(any(), any());
+    }
+
+    @Test
+    void mustReturn403WhenStaffListsSwapRequestsOfAnotherEmployee() throws Exception {
+        mockMvc.perform(get("/swap-requests")
+                        .with(Util.staffThirdAuthority)
+                        .param("requesterId", Util.employeeId.toString())
+                        .param("targetId", Util.employee1Id.toString()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void mustReturn401WhenListingSwapRequestsWithoutAuthentication() throws Exception {
+        mockMvc.perform(get("/swap-requests"))
+                .andExpect(status().isUnauthorized());
     }
 }

@@ -12,6 +12,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -85,13 +90,17 @@ public class TimeOffRequestServiceTest {
                         LocalDateTime.now().plusDays(1)
                 )
         );
-        when(timeOffRequestRepository.findAll()).thenReturn(timeOffRequestList);
+        Specification<TimeOffRequest> specification = Specification.allOf();
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<TimeOffRequest> page = new PageImpl<>(timeOffRequestList, pageable, timeOffRequestList.size());
+        when(timeOffRequestRepository.findAll(specification, pageable)).thenReturn(page);
 
-        List<TimeOffRequest> retrieveAllTimeOffRequests = timeOffRequestService.findAllTimeOffRequests();
+        Page<TimeOffRequest> retrieveAllTimeOffRequests = timeOffRequestService.retrieveAllTimeOffRequests(specification, pageable);
 
         assertNotNull(retrieveAllTimeOffRequests);
-        assertEquals(2, retrieveAllTimeOffRequests.size());
-        verify(timeOffRequestRepository, times(1)).findAll();
+        assertEquals(2, retrieveAllTimeOffRequests.getContent().size());
+        assertEquals(2, retrieveAllTimeOffRequests.getTotalElements());
+        verify(timeOffRequestRepository, times(1)).findAll(specification, pageable);
     }
 
     @Test
@@ -111,17 +120,6 @@ public class TimeOffRequestServiceTest {
         when(timeOffRequestRepository.findById(timeOffRequestId)).thenReturn(Optional.empty());
 
         assertThrows(ObjectNotFoundException.class, () -> timeOffRequestService.retrieveTimeOffRequestById(timeOffRequestId));
-    }
-
-    @Test
-    void testRetrieveAllTimeOffRequestByEmployeeId() {
-        when(timeOffRequestRepository.findByEmployeeId(timeOffRequest.getEmployee().getId())).thenReturn(List.of(timeOffRequest));
-
-        List<TimeOffRequest> retrievedAllTimeOffRequests = timeOffRequestService.retrieveAllTimeOffRequestsByEmployeeId(employeeId);
-
-        assertNotNull(retrievedAllTimeOffRequests);
-        assertEquals(1, retrievedAllTimeOffRequests.size());
-        verify(timeOffRequestRepository, times(1)).findByEmployeeId(timeOffRequest.getEmployee().getId());
     }
 
     @Test

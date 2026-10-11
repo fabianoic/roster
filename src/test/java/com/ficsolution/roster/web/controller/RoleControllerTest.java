@@ -14,6 +14,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -23,6 +25,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import static org.hamcrest.Matchers.hasSize;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
@@ -180,5 +183,23 @@ public class RoleControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(new RoleRequest("NEW_ROLE"))))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void mustRetrieveAllRoles() throws Exception {
+        given(roleService.retrieveAllRoles(any(), any())).willReturn(new PageImpl<>(List.of(
+                new Role(UUID.randomUUID(), "MANAGER"),
+                new Role(UUID.randomUUID(), "STAFF"))));
+
+        mockMvc.perform(get("/roles")
+                        .with(Util.authority)
+                        .param("name", "a"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(2)))
+                .andExpect(jsonPath("$.content[0].name").value("MANAGER"))
+                .andExpect(jsonPath("$.totalElements").value(2));
+
+        then(roleService).should().retrieveAllRoles(any(), argThat(pageable ->
+                pageable.getPageNumber() == 0 && pageable.getSort().equals(Sort.by("name"))));
     }
 }

@@ -15,6 +15,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -26,8 +28,10 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.hamcrest.Matchers.hasSize;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.doNothing;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -132,24 +136,24 @@ public class TimeOffRequestControllerTest {
                 buildTimeOffRequest(UUID.randomUUID(), RequestStatus.PENDING),
                 buildTimeOffRequest(UUID.randomUUID(), RequestStatus.APPROVED)
         );
-        given(timeOffRequestService.findAllTimeOffRequests()).willReturn(timeOffRequests);
+        given(timeOffRequestService.retrieveAllTimeOffRequests(any(), any())).willReturn(new PageImpl<>(timeOffRequests));
 
         mockMvc.perform(get(path)
                         .with(Util.authority))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.*", hasSize(2)));
+                .andExpect(jsonPath("$.content", hasSize(2)));
     }
 
     @Test
     void mustRetrieveTimeOffRequestsByEmployeeId() throws Exception {
         List<TimeOffRequest> timeOffRequests = List.of(buildTimeOffRequest(UUID.randomUUID(), RequestStatus.PENDING));
-        given(timeOffRequestService.retrieveAllTimeOffRequestsByEmployeeId(Util.employeeId)).willReturn(timeOffRequests);
+        given(timeOffRequestService.retrieveAllTimeOffRequests(any(), any())).willReturn(new PageImpl<>(timeOffRequests));
 
         mockMvc.perform(get(path)
                         .with(Util.authority)
                         .param("employeeId", Util.employeeId.toString()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.*", hasSize(1)));
+                .andExpect(jsonPath("$.content", hasSize(1)));
     }
 
     @Test
@@ -265,14 +269,14 @@ public class TimeOffRequestControllerTest {
 
     @Test
     void mustAllowStaffToListOwnTimeOffRequestsByEmployeeId() throws Exception {
-        given(timeOffRequestService.retrieveAllTimeOffRequestsByEmployeeId(Util.employeeId))
-                .willReturn(List.of(buildTimeOffRequest(UUID.randomUUID(), RequestStatus.PENDING)));
+        given(timeOffRequestService.retrieveAllTimeOffRequests(any(), any()))
+                .willReturn(new PageImpl<>(List.of(buildTimeOffRequest(UUID.randomUUID(), RequestStatus.PENDING))));
 
         mockMvc.perform(get(path)
                         .with(Util.staffAuthority)
                         .param("employeeId", Util.employeeId.toString()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.*", hasSize(1)));
+                .andExpect(jsonPath("$.content", hasSize(1)));
     }
 
     @Test
@@ -377,5 +381,52 @@ public class TimeOffRequestControllerTest {
         mockMvc.perform(delete(String.format("%s/%s", path, id))
                         .with(Util.staffOtherAuthority))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void mustReturnPagedTimeOffRequestsUsingRequestedPageAndDefaultSort() throws Exception {
+        given(timeOffRequestService.retrieveAllTimeOffRequests(any(), any()))
+                .willAnswer(invocation -> new PageImpl<>(
+                        List.of(buildTimeOffRequest(UUID.randomUUID(), RequestStatus.PENDING)),
+                        invocation.getArgument(1),
+                        3));
+
+        mockMvc.perform(get(path)
+                        .with(Util.authority)
+                        .param("status", "PENDING")
+                        .param("type", "HOLIDAY")
+                        .param("start", LocalDate.now().toString())
+                        .param("end", LocalDate.now().plusDays(30).toString())
+                        .param("page", "2")
+                        .param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.page").value(2))
+                .andExpect(jsonPath("$.totalElements").value(3))
+                .andExpect(jsonPath("$.totalPages").value(3));
+
+        then(timeOffRequestService).should().retrieveAllTimeOffRequests(any(), argThat(pageable ->
+                pageable.getPageNumber() == 2
+                        && pageable.getPageSize() == 1
+                        && pageable.getSort().equals(Sort.by("startDate"))));
+    }
+
+    @Test
+    void mustAllowSupervisorToListAllTimeOffRequests() throws Exception {
+        given(timeOffRequestService.retrieveAllTimeOffRequests(any(), any()))
+                .willReturn(new PageImpl<>(List.of(buildTimeOffRequest(UUID.randomUUID(), RequestStatus.PENDING))));
+
+        mockMvc.perform(get(path)
+                        .with(Util.supervisorAuthority))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(1)));
+    }
+
+    @Test
+    void mustReturn400WhenListingTimeOffRequestsWithInvalidStatus() throws Exception {
+        mockMvc.perform(get(path)
+                        .with(Util.authority)
+                        .param("status", "UNKNOWN"))
+                .andExpect(status().isBadRequest());
     }
 }

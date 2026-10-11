@@ -5,6 +5,7 @@ import com.ficsolution.roster.security.Permissions;
 import com.ficsolution.roster.security.SecurityUtil;
 import com.ficsolution.roster.service.EmployeeService;
 import com.ficsolution.roster.repository.specification.EmployeeSpecification;
+import com.ficsolution.roster.web.dto.common.PagedResponse;
 import com.ficsolution.roster.web.dto.employee.EmployeeFilter;
 import com.ficsolution.roster.web.dto.employee.ChangePasswordRequest;
 import com.ficsolution.roster.web.dto.employee.CreateEmployeeRequest;
@@ -15,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -47,7 +49,7 @@ public class EmployeeController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<EmployeeResponse>> retrieveAllEmployees(@ModelAttribute EmployeeFilter filter, Pageable pageable) {
+    public ResponseEntity<PagedResponse<EmployeeResponse>> retrieveAllEmployees(@ModelAttribute EmployeeFilter filter, @PageableDefault(sort = "name") Pageable pageable) {
         Specification<Employee> spec = Specification.allOf(
                 EmployeeSpecification.hasRoleId(filter.roleId()),
                 EmployeeSpecification.hasName(filter.name()),
@@ -55,8 +57,7 @@ public class EmployeeController {
                 EmployeeSpecification.hasStatus(filter.status())
         );
         Page<Employee> employees = employeeService.retrieveAllEmployees(spec, pageable);
-        Page<EmployeeResponse> responses = employees.map(EmployeeResponse::from);
-        return ResponseEntity.ok(responses);
+        return ResponseEntity.ok(PagedResponse.from(employees.map(EmployeeResponse::from)));
     }
 
     @PutMapping("/{id}")

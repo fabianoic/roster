@@ -1,16 +1,22 @@
 package com.ficsolution.roster.web.controller;
 
 import com.ficsolution.roster.model.Store;
+import com.ficsolution.roster.repository.specification.StoreSpecification;
 import com.ficsolution.roster.service.StoreService;
+import com.ficsolution.roster.web.dto.common.PagedResponse;
+import com.ficsolution.roster.web.dto.store.StoreFilter;
 import com.ficsolution.roster.web.dto.store.StoreRequest;
 import com.ficsolution.roster.web.dto.store.StoreResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -28,10 +34,13 @@ public class StoreController {
     }
 
     @GetMapping
-    public ResponseEntity<List<StoreResponse>> retrieveAllStores() {
-        List<Store> stores = storeService.retrieveAllStores();
-        List<StoreResponse> responses = stores.stream().map(StoreResponse::from).toList();
-        return ResponseEntity.ok(responses);
+    public ResponseEntity<PagedResponse<StoreResponse>> retrieveAllStores(@ModelAttribute StoreFilter filter, @PageableDefault(sort = "name") Pageable pageable) {
+        Specification<Store> specification = Specification.allOf(
+                StoreSpecification.nameContains(filter.name()),
+                StoreSpecification.addressContains(filter.address())
+        );
+        Page<Store> stores = storeService.retrieveAllStores(specification, pageable);
+        return ResponseEntity.ok(PagedResponse.from(stores.map(StoreResponse::from)));
     }
 
     @GetMapping("/{id}")

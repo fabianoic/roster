@@ -7,10 +7,12 @@ import com.ficsolution.roster.repository.AvailabilityRepository;
 import lombok.AllArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -32,18 +34,13 @@ public class AvailabilityService {
     }
 
     @Transactional(readOnly = true)
-    public List<Availability> findAllAvailabilities() {
-        return availabilityRepository.findAll();
+    public Page<Availability> retrieveAllAvailabilities(Specification<Availability> specification, Pageable pageable) {
+        return availabilityRepository.findAll(specification, pageable);
     }
 
     @Transactional(readOnly = true)
     public Availability retrieveAvailabilityById(UUID availabilityId) {
         return availabilityRepository.findById(availabilityId).orElseThrow(() -> new ObjectNotFoundException("Availability", availabilityId.toString()));
-    }
-
-    @Transactional(readOnly = true)
-    public List<Availability> retrieveAllAvailabilityByEmployeeId(UUID employeeId) {
-        return availabilityRepository.findByEmployeeId(employeeId);
     }
 
     @Transactional

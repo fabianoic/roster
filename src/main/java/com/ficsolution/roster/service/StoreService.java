@@ -4,11 +4,13 @@ import com.ficsolution.roster.exception.ObjectNotFoundException;
 import com.ficsolution.roster.model.Store;
 import com.ficsolution.roster.repository.StoreRepository;
 import lombok.AllArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -26,8 +28,8 @@ public class StoreService {
     }
 
     @Transactional(readOnly = true)
-    public List<Store> retrieveAllStores() {
-        return storeRepository.findAll();
+    public Page<Store> retrieveAllStores(Specification<Store> specification, Pageable pageable) {
+        return storeRepository.findAll(specification, pageable);
     }
 
     @Transactional(readOnly = true)

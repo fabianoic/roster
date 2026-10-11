@@ -48,14 +48,7 @@ public class ShiftController {
                 ShiftSpecification.shiftDateBetween(filter.start(), filter.end())
         );
         Page<Shift> shifts = shiftService.retrieveAllShifts(specification, pageable);
-        Page<ShiftResponse> responses = shifts.map(ShiftResponse::from);
-        return ResponseEntity.ok(new PagedResponse<>(
-                responses.getContent(),
-                responses.getNumber(),
-                responses.getSize(),
-                responses.getTotalElements(),
-                responses.getTotalPages()
-        ));
+        return ResponseEntity.ok(PagedResponse.from(shifts.map(ShiftResponse::from)));
     }
 
     @GetMapping("/{id}")

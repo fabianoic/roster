@@ -6,6 +6,9 @@ import com.ficsolution.roster.model.Role;
 import com.ficsolution.roster.repository.PermissionRepository;
 import com.ficsolution.roster.repository.RoleRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,8 +32,8 @@ public class RoleService {
     }
 
     @Transactional(readOnly = true)
-    public List<Role> retrieveAllRoles() {
-        return roleRepository.findAll();
+    public Page<Role> retrieveAllRoles(Specification<Role> specification, Pageable pageable) {
+        return roleRepository.findAll(specification, pageable);
     }
 
     @Transactional(readOnly = true)

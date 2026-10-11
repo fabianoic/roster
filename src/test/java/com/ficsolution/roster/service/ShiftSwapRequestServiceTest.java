@@ -14,6 +14,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 
 import java.sql.SQLException;
@@ -164,13 +169,18 @@ public class ShiftSwapRequestServiceTest {
                 new ShiftSwapRequest(),
                 new ShiftSwapRequest()
         );
-        when(shiftSwapRequestRepository.findAll()).thenReturn(shiftSwapRequestList);
+        Specification<ShiftSwapRequest> specification = Specification.allOf();
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<ShiftSwapRequest> page = new PageImpl<>(shiftSwapRequestList, pageable, shiftSwapRequestList.size());
+        when(shiftSwapRequestRepository.findAll(specification, pageable)).thenReturn(page);
 
-        List<ShiftSwapRequest> retrievedShiftSwapRequests = shiftSwapRequestService.retrieveAllShiftSwapRequests();
+        Page<ShiftSwapRequest> retrievedShiftSwapRequests = shiftSwapRequestService.retrieveAllShiftSwapRequests(specification, pageable);
 
         assertNotNull(retrievedShiftSwapRequests);
         assertFalse(retrievedShiftSwapRequests.isEmpty());
-        assertEquals(3, retrievedShiftSwapRequests.size());
+        assertEquals(3, retrievedShiftSwapRequests.getContent().size());
+        assertEquals(3, retrievedShiftSwapRequests.getTotalElements());
+        verify(shiftSwapRequestRepository, times(1)).findAll(specification, pageable);
     }
 
     @Test

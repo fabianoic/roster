@@ -11,6 +11,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -21,8 +23,10 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.hamcrest.Matchers.hasSize;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.doNothing;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -72,12 +76,12 @@ public class StoreControllerTest {
                 Store.builder().id(UUID.randomUUID()).name("STORE 3").address("ADDRESS 3").createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build(),
                 Store.builder().id(UUID.randomUUID()).name("STORE 4").address("ADDRESS 4").createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build()
         );
-        given(storeService.retrieveAllStores()).willReturn(stores);
+        given(storeService.retrieveAllStores(any(), any())).willReturn(new PageImpl<>(stores));
 
         mockMvc.perform(get(path)
                         .with(Util.authority))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.*", hasSize(4)));
+                .andExpect(jsonPath("$.content", hasSize(4)));
     }
 
     @Test
@@ -175,7 +179,7 @@ public class StoreControllerTest {
 
     @Test
     void mustAllowStaffToListStores() throws Exception {
-        given(storeService.retrieveAllStores()).willReturn(List.of());
+        given(storeService.retrieveAllStores(any(), any())).willReturn(new PageImpl<>(List.of()));
 
         mockMvc.perform(get(path)
                         .with(Util.staffAuthority))
@@ -191,5 +195,43 @@ public class StoreControllerTest {
         mockMvc.perform(get(String.format("%s/%s", path, id))
                         .with(Util.staffAuthority))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void mustReturnPagedStoresUsingRequestedPageAndDefaultSort() throws Exception {
+        given(storeService.retrieveAllStores(any(), any()))
+                .willAnswer(invocation -> new PageImpl<>(
+                        List.of(Store.builder().id(UUID.randomUUID()).name("Blackrock").address("Blackrock Shopping Center").build()),
+                        invocation.getArgument(1),
+                        11));
+
+        mockMvc.perform(get(path)
+                        .with(Util.authority)
+                        .param("name", "black")
+                        .param("page", "1")
+                        .param("size", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.content[0].name").value("Blackrock"))
+                .andExpect(jsonPath("$.page").value(1))
+                .andExpect(jsonPath("$.totalElements").value(11))
+                .andExpect(jsonPath("$.totalPages").value(2));
+
+        then(storeService).should().retrieveAllStores(any(), argThat(pageable ->
+                pageable.getPageNumber() == 1
+                        && pageable.getPageSize() == 10
+                        && pageable.getSort().equals(Sort.by("name"))));
+    }
+
+    @Test
+    void mustCapPageSizeWhenListingStores() throws Exception {
+        given(storeService.retrieveAllStores(any(), any())).willReturn(new PageImpl<>(List.of()));
+
+        mockMvc.perform(get(path)
+                        .with(Util.authority)
+                        .param("size", "1000"))
+                .andExpect(status().isOk());
+
+        then(storeService).should().retrieveAllStores(any(), argThat(pageable -> pageable.getPageSize() == 200));
     }
 }

@@ -1,19 +1,25 @@
 package com.ficsolution.roster.web.controller;
 
 import com.ficsolution.roster.model.TimeOffRequest;
+import com.ficsolution.roster.repository.specification.TimeOffRequestSpecification;
 import com.ficsolution.roster.security.Permissions;
 import com.ficsolution.roster.security.SecurityUtil;
 import com.ficsolution.roster.service.TimeOffRequestService;
+import com.ficsolution.roster.web.dto.common.PagedResponse;
 import com.ficsolution.roster.web.dto.timeoff.CreateTimeOffRequest;
+import com.ficsolution.roster.web.dto.timeoff.TimeOffRequestFilter;
 import com.ficsolution.roster.web.dto.timeoff.TimeOffRequestResponse;
 import com.ficsolution.roster.web.dto.timeoff.UpdateTimeOffRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -32,21 +38,21 @@ public class TimeOffRequestController {
     }
 
     @GetMapping
-    public ResponseEntity<List<TimeOffRequestResponse>> retrieveAllTimeOffRequests() {
-        SecurityUtil.requirePermission(Permissions.TIME_OFF_ANY);
-        List<TimeOffRequestResponse> responses = timeOffRequestService.findAllTimeOffRequests().stream()
-                .map(TimeOffRequestResponse::from)
-                .toList();
-        return ResponseEntity.ok(responses);
-    }
-
-    @GetMapping(params = "employeeId")
-    public ResponseEntity<List<TimeOffRequestResponse>> retrieveTimeOffRequestsByEmployeeId(@RequestParam UUID employeeId) {
-        SecurityUtil.requireOwnershipOrPermission(employeeId, Permissions.TIME_OFF_ANY);
-        List<TimeOffRequestResponse> responses = timeOffRequestService.retrieveAllTimeOffRequestsByEmployeeId(employeeId).stream()
-                .map(TimeOffRequestResponse::from)
-                .toList();
-        return ResponseEntity.ok(responses);
+    public ResponseEntity<PagedResponse<TimeOffRequestResponse>> retrieveAllTimeOffRequests(@ModelAttribute TimeOffRequestFilter filter, @PageableDefault(sort = "startDate") Pageable pageable) {
+        // Without TIME_OFF_ANY the listing must be scoped to the logged employee
+        if (filter.employeeId() == null) {
+            SecurityUtil.requirePermission(Permissions.TIME_OFF_ANY);
+        } else {
+            SecurityUtil.requireOwnershipOrPermission(filter.employeeId(), Permissions.TIME_OFF_ANY);
+        }
+        Specification<TimeOffRequest> specification = Specification.allOf(
+                TimeOffRequestSpecification.hasEmployeeId(filter.employeeId()),
+                TimeOffRequestSpecification.hasStatus(filter.status()),
+                TimeOffRequestSpecification.hasType(filter.type()),
+                TimeOffRequestSpecification.overlapsPeriod(filter.start(), filter.end())
+        );
+        Page<TimeOffRequest> timeOffRequests = timeOffRequestService.retrieveAllTimeOffRequests(specification, pageable);
+        return ResponseEntity.ok(PagedResponse.from(timeOffRequests.map(TimeOffRequestResponse::from)));
     }
 
     @GetMapping("/{id}")

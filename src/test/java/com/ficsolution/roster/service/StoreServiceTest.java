@@ -8,6 +8,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -51,15 +56,19 @@ public class StoreServiceTest {
                 new Store(id, "Ballsbridge", "Shelbourn 01 - Dublin 4", LocalDateTime.now(), LocalDateTime.now()),
                 new Store(UUID.randomUUID(), "Blackrock", "Blackrock Shopping Center", LocalDateTime.now(), LocalDateTime.now())
         );
-        when(storeRepository.findAll()).thenReturn(stores);
+        Specification<Store> specification = Specification.allOf();
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Store> page = new PageImpl<>(stores, pageable, stores.size());
+        when(storeRepository.findAll(specification, pageable)).thenReturn(page);
 
         // act
-        List<Store> retrievedStores = storeService.retrieveAllStores();
+        Page<Store> retrievedStores = storeService.retrieveAllStores(specification, pageable);
 
         // assert
         assertNotNull(retrievedStores);
-        assertEquals(2, stores.size());
-        verify(storeRepository, times(1)).findAll();
+        assertEquals(2, retrievedStores.getContent().size());
+        assertEquals(2, retrievedStores.getTotalElements());
+        verify(storeRepository, times(1)).findAll(specification, pageable);
     }
 
     @Test
