@@ -11,9 +11,9 @@ import com.ficsolution.roster.model.enums.EmployeeStatus;
 import com.ficsolution.roster.model.enums.ShiftStatus;
 import com.ficsolution.roster.repository.ShiftRepository;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
@@ -22,9 +22,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
+import java.time.*;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -37,7 +35,6 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 public class ShiftServiceTest {
 
-    @InjectMocks
     private ShiftService shiftService;
 
     @Mock
@@ -53,6 +50,12 @@ public class ShiftServiceTest {
     private static Shift shift;
     private static Store store;
     private static Employee employee;
+
+    @BeforeEach
+    void initService() {
+        shiftService = new ShiftService(shiftRepository, employeeService, storeService,
+                Clock.fixed(Instant.parse("2026-10-11T10:00:00Z"), ZoneId.of("Europe/Dublin")));
+    }
 
     @BeforeAll
     static void setUp() {
@@ -353,5 +356,29 @@ public class ShiftServiceTest {
         when(shiftRepository.findById(any(UUID.class))).thenReturn(Optional.of(Shift.builder().status(ShiftStatus.CANCELED).build()));
 
         assertThrows(OperationException.class, () -> shiftService.updateShiftInfo(id, newShift));
+    }
+
+    @Test
+    void completePastShifts_usesDublinDate() {
+        ShiftService shiftServiceClock = new ShiftService(shiftRepository, employeeService, storeService, Clock.fixed(Instant.parse("2026-10-11T23:30:00Z"), ZoneId.of("Europe/Dublin")));
+
+        when(shiftRepository.updateShiftStatusBeforeShiftDate(any(), any(), any(), any())).thenReturn(3);
+
+        int result = shiftServiceClock.completePastShifts();
+
+        assertEquals(3, result);
+        verify(shiftRepository).updateShiftStatusBeforeShiftDate(ShiftStatus.SCHEDULED, ShiftStatus.COMPLETED, LocalDateTime.now(), LocalDate.of(2026, 10, 12));
+    }
+
+    @Test
+    void completePastShifts_usesDublinDateInWinterTime() {
+        ShiftService shiftServiceClock = new ShiftService(shiftRepository, employeeService, storeService, Clock.fixed(Instant.parse("2026-12-31T23:30:00Z"), ZoneId.of("Europe/Dublin")));
+
+        when(shiftRepository.updateShiftStatusBeforeShiftDate(any(), any(), any(), any())).thenReturn(0);
+
+        int result = shiftServiceClock.completePastShifts();
+
+        assertEquals(0, result);
+        verify(shiftRepository).updateShiftStatusBeforeShiftDate(ShiftStatus.SCHEDULED, ShiftStatus.COMPLETED, LocalDateTime.now(), LocalDate.of(2026, 12, 31));
     }
 }

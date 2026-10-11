@@ -15,6 +15,9 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -25,6 +28,7 @@ public class ShiftService {
     private final ShiftRepository shiftRepository;
     private final EmployeeService employeeService;
     private final StoreService storeService;
+    private final Clock clock;
 
     @Transactional
     public Shift createShift(Shift shift) {
@@ -111,5 +115,15 @@ public class ShiftService {
     private boolean isOverlapping(Shift existingShift, Shift newShift) {
         return existingShift.getStartTime().isBefore(newShift.getEndTime())
                 && existingShift.getEndTime().isAfter(newShift.getStartTime());
+    }
+
+    @Transactional
+    public int completePastShifts() {
+        return shiftRepository.updateShiftStatusBeforeShiftDate(
+                ShiftStatus.SCHEDULED,
+                ShiftStatus.COMPLETED,
+                LocalDateTime.now(),
+                LocalDate.now(clock)
+                );
     }
 }
