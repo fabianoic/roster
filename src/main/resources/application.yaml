@@ -41,3 +41,9 @@ logging:
     com.ficsolution.roster: INFO
     org.hibernate.SQL: WARN
 
+roster:
+  time-zone: "Europe/Dublin"
+  jobs:
+    complete-shifts:
+      cron: 0 5 0 * * *
+

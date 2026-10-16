@@ -1,8 +1,10 @@
 package com.ficsolution.roster.web.controller;
 
+import com.ficsolution.roster.model.Employee;
 import com.ficsolution.roster.model.Shift;
 import com.ficsolution.roster.repository.specification.ShiftSpecification;
 import com.ficsolution.roster.service.ShiftService;
+import com.ficsolution.roster.web.dto.UpdateShiftEmployeeRequest;
 import com.ficsolution.roster.web.dto.common.EmployeeSummary;
 import com.ficsolution.roster.web.dto.common.PagedResponse;
 import com.ficsolution.roster.web.dto.shift.CreateShiftRequest;
@@ -63,6 +65,12 @@ public class ShiftController {
         Shift shift = updateShiftRequest.toEntity();
         shift = shiftService.updateShiftInfo(id, shift);
         return ResponseEntity.ok(ShiftResponse.from(shift));
+    }
+
+    @PatchMapping("/{id}/employee")
+    public ResponseEntity<ShiftResponse> updateShiftEmployee(@PathVariable UUID id, @Valid @RequestBody UpdateShiftEmployeeRequest updateShiftEmployeeRequest) {
+        Employee employee = Employee.builder().id(updateShiftEmployeeRequest.employeeId()).build();
+        return ResponseEntity.ok(ShiftResponse.from(shiftService.updateShiftEmployee(id, employee)));
     }
 
     @GetMapping("/{id}/swap-candidates")

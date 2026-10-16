@@ -11,9 +11,9 @@ import com.ficsolution.roster.model.enums.EmployeeStatus;
 import com.ficsolution.roster.model.enums.ShiftStatus;
 import com.ficsolution.roster.repository.ShiftRepository;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
@@ -22,9 +22,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
+import java.time.*;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -37,7 +35,6 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 public class ShiftServiceTest {
 
-    @InjectMocks
     private ShiftService shiftService;
 
     @Mock
@@ -53,6 +50,12 @@ public class ShiftServiceTest {
     private static Shift shift;
     private static Store store;
     private static Employee employee;
+
+    @BeforeEach
+    void initService() {
+        shiftService = new ShiftService(shiftRepository, employeeService, storeService,
+                Clock.fixed(Instant.parse("2026-10-11T10:00:00Z"), ZoneId.of("Europe/Dublin")));
+    }
 
     @BeforeAll
     static void setUp() {
@@ -296,6 +299,16 @@ public class ShiftServiceTest {
     }
 
     @Test
+    void testSwapShift_shiftCanceled() {
+        UUID unknownEmployeeId = UUID.randomUUID();
+        when(shiftRepository.findById(id)).thenReturn(Optional.of(Shift.builder().status(ShiftStatus.CANCELED).build()));
+
+        assertThrows(OperationException.class, () -> shiftService.swapShiftEmployee(id, unknownEmployeeId));
+        verify(employeeService, never()).isEligibleForShift(any(), any());
+        verify(shiftRepository, never()).save(any());
+    }
+
+    @Test
     void mustReturnAListOfCandidatesToSwapShift() {
         List<Employee> candidates = List.of(
                 Employee.builder().id(UUID.randomUUID()).name("Name example 1").build(),
@@ -353,5 +366,98 @@ public class ShiftServiceTest {
         when(shiftRepository.findById(any(UUID.class))).thenReturn(Optional.of(Shift.builder().status(ShiftStatus.CANCELED).build()));
 
         assertThrows(OperationException.class, () -> shiftService.updateShiftInfo(id, newShift));
+    }
+
+    @Test
+    void completePastShifts_usesDublinDate() {
+        ShiftService shiftServiceClock = new ShiftService(shiftRepository, employeeService, storeService, Clock.fixed(Instant.parse("2026-10-11T23:30:00Z"), ZoneId.of("Europe/Dublin")));
+
+        when(shiftRepository.updateShiftStatusBeforeShiftDate(any(), any(), any(), any())).thenReturn(3);
+
+        int result = shiftServiceClock.completePastShifts();
+
+        assertEquals(3, result);
+        verify(shiftRepository).updateShiftStatusBeforeShiftDate(ShiftStatus.SCHEDULED, ShiftStatus.COMPLETED, LocalDateTime.now(), LocalDate.of(2026, 10, 12));
+    }
+
+    @Test
+    void completePastShifts_usesDublinDateInWinterTime() {
+        ShiftService shiftServiceClock = new ShiftService(shiftRepository, employeeService, storeService, Clock.fixed(Instant.parse("2026-12-31T23:30:00Z"), ZoneId.of("Europe/Dublin")));
+
+        when(shiftRepository.updateShiftStatusBeforeShiftDate(any(), any(), any(), any())).thenReturn(0);
+
+        int result = shiftServiceClock.completePastShifts();
+
+        assertEquals(0, result);
+        verify(shiftRepository).updateShiftStatusBeforeShiftDate(ShiftStatus.SCHEDULED, ShiftStatus.COMPLETED, LocalDateTime.now(), LocalDate.of(2026, 12, 31));
+    }
+
+    @Test
+    void mustThrowOperationExceptionWhenShiftIsCompleted() {
+        Store newStore = new Store();
+        newStore.setId(UUID.randomUUID());
+        Shift newShift = new Shift(
+                id,
+                employee,
+                newStore,
+                LocalDate.now(),
+                LocalTime.of(10, 0),
+                LocalTime.of(18, 0),
+                ShiftStatus.SCHEDULED,
+                LocalDateTime.now(),
+                LocalDateTime.now());
+
+        when(shiftRepository.findById(any(UUID.class))).thenReturn(Optional.of(Shift.builder().status(ShiftStatus.COMPLETED).build()));
+
+        assertThrows(OperationException.class, () -> shiftService.updateShiftInfo(id, newShift));
+    }
+
+    @Test
+    void mustThrowOperationExceptionWhenNewShiftStatusIsCompleted() {
+        Store newStore = new Store();
+        newStore.setId(UUID.randomUUID());
+        Shift newShift = new Shift(
+                id,
+                employee,
+                newStore,
+                LocalDate.now(),
+                LocalTime.of(10, 0),
+                LocalTime.of(18, 0),
+                ShiftStatus.COMPLETED,
+                LocalDateTime.now(),
+                LocalDateTime.now());
+
+        when(shiftRepository.findById(any(UUID.class))).thenReturn(Optional.of(Shift.builder().status(ShiftStatus.SCHEDULED).build()));
+
+        assertThrows(OperationException.class, () -> shiftService.updateShiftInfo(id, newShift));
+    }
+
+    @Test
+    void mustUpdateShiftToCanceled() {
+        Store newStore = new Store();
+        newStore.setId(UUID.randomUUID());
+        Shift newShift = new Shift(
+                id,
+                employee,
+                newStore,
+                LocalDate.now(),
+                LocalTime.of(8, 0),
+                LocalTime.of(16, 0),
+                ShiftStatus.CANCELED,
+                LocalDateTime.now(),
+                LocalDateTime.now());
+        when(shiftRepository.findById(any(UUID.class))).thenReturn(Optional.of(Shift.builder().status(ShiftStatus.SCHEDULED).build()));
+        when(shiftRepository.save(any(Shift.class))).thenReturn(newShift);
+
+        Shift updatedShift = shiftService.updateShiftInfo(id, newShift);
+
+        assertNotNull(updatedShift);
+        assertEquals(ShiftStatus.CANCELED, updatedShift.getStatus());
+        assertEquals(employee.getId(), updatedShift.getEmployee().getId());
+        assertEquals(LocalTime.of(8, 0), updatedShift.getStartTime());
+        assertEquals(LocalTime.of(16, 0), updatedShift.getEndTime());
+        verify(shiftRepository, times(1)).findById(any());
+        verify(shiftRepository, times(1)).save(any());
+        verify(storeService, times(0)).retrieveStoreById(any());
     }
 }

@@ -15,6 +15,9 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -25,6 +28,7 @@ public class ShiftService {
     private final ShiftRepository shiftRepository;
     private final EmployeeService employeeService;
     private final StoreService storeService;
+    private final Clock clock;
 
     @Transactional
     public Shift createShift(Shift shift) {
@@ -61,9 +65,18 @@ public class ShiftService {
     public Shift updateShiftInfo(UUID id, Shift newShift) {
         validShiftTime(newShift);
         Shift shift = retrieveShiftById(id);
-        if (shift.getStatus().equals(ShiftStatus.CANCELED)) {
-            throw new OperationException("Shift", "Operation not permitted, it's not possible to update a canceled shift");
-        } else if (!newShift.getStatus().equals(ShiftStatus.CANCELED)) {
+
+        if (shift.getStatus().isFinal()) {
+            throw new OperationException("Shift", "Completed or canceled shifts can't be updated");
+        }
+
+        if (newShift.getStatus() == ShiftStatus.COMPLETED) {
+            throw new OperationException("Shift", "COMPLETED is set automatically and can't be requested");
+        }
+
+        if (newShift.getStatus() == ShiftStatus.CANCELED) {
+            shift.setStatus(newShift.getStatus());
+        } else {
             shift.setEndTime(newShift.getEndTime());
             shift.setStartTime(newShift.getStartTime());
             validConflictShiftDateAndTime(shift.getEmployee().getId(), shift);
@@ -72,7 +85,6 @@ public class ShiftService {
                 shift.setStore(storeService.retrieveStoreById(newShift.getStore().getId()));
             }
         }
-        shift.setStatus(newShift.getStatus());
 
         return shiftRepository.save(shift);
     }
@@ -80,6 +92,11 @@ public class ShiftService {
     @Transactional
     public Shift swapShiftEmployee(UUID shiftId, UUID employeeId) {
         Shift shift = retrieveShiftById(shiftId);
+
+        if (shift.getStatus().isFinal()) {
+            throw new OperationException("Shift", "Completed or canceled shifts can't be updated");
+        }
+
         Employee employee = employeeService.retrieveEmployeeById(employeeId);
 
         if (!employeeService.isEligibleForShift(employeeId, shift)) {
@@ -111,5 +128,33 @@ public class ShiftService {
     private boolean isOverlapping(Shift existingShift, Shift newShift) {
         return existingShift.getStartTime().isBefore(newShift.getEndTime())
                 && existingShift.getEndTime().isAfter(newShift.getStartTime());
+    }
+
+    @Transactional
+    public int completePastShifts() {
+        return shiftRepository.updateShiftStatusBeforeShiftDate(
+                ShiftStatus.SCHEDULED,
+                ShiftStatus.COMPLETED,
+                LocalDateTime.now(),
+                LocalDate.now(clock)
+        );
+    }
+
+    @Transactional
+    public Shift updateShiftEmployee(UUID shiftId, Employee employee) {
+        Shift shift = retrieveShiftById(shiftId);
+
+        if (shift.getStatus() == ShiftStatus.CANCELED) {
+            throw new OperationException("Shift", "Operation failed, shift is canceled");
+        }
+
+        validConflictShiftDateAndTime(employee.getId(), shift);
+
+        employee = employeeService.retrieveEmployeeById(employee.getId());
+
+        shift.setEmployee(employee);
+        shiftRepository.save(shift);
+
+        return shift;
     }
 }

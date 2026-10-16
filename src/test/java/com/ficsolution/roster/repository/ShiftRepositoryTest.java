@@ -75,4 +75,38 @@ public class ShiftRepositoryTest {
         assertFalse(retrievedShift.isEmpty());
         assertEquals(shiftId, retrievedShift.get().getId());
     }
+
+    @Test
+    void testUpdateShiftStatusBeforeShiftDate() {
+        LocalDate today = LocalDate.of(2000, 1, 10);
+        Shift pastScheduled = shiftRepository.save(buildShift(today.minusDays(1), ShiftStatus.SCHEDULED));
+        Shift pastCanceled = shiftRepository.save(buildShift(today.minusDays(1), ShiftStatus.CANCELED));
+        Shift todayScheduled = shiftRepository.save(buildShift(today, ShiftStatus.SCHEDULED));
+        shiftRepository.flush();
+
+        int updated = shiftRepository.updateShiftStatusBeforeShiftDate(ShiftStatus.SCHEDULED, ShiftStatus.COMPLETED, LocalDateTime.now(), today);
+
+        assertEquals(1, updated);
+        assertEquals(ShiftStatus.COMPLETED, shiftRepository.findById(pastScheduled.getId()).get().getStatus());
+        assertEquals(ShiftStatus.CANCELED, shiftRepository.findById(pastCanceled.getId()).get().getStatus());
+        assertEquals(ShiftStatus.SCHEDULED, shiftRepository.findById(todayScheduled.getId()).get().getStatus());
+    }
+
+    @Test
+    void testUpdateShiftStatusBeforeShiftDateWithNothingToUpdate() {
+        int updated = shiftRepository.updateShiftStatusBeforeShiftDate(ShiftStatus.SCHEDULED, ShiftStatus.COMPLETED, LocalDateTime.now(), LocalDate.of(2000, 1, 10));
+
+        assertEquals(0, updated);
+    }
+
+    private Shift buildShift(LocalDate shiftDate, ShiftStatus status) {
+        return Shift.builder()
+                .employee(employeeRepository.findById(employeeId).get())
+                .store(storeRepository.findById(storeId).get())
+                .shiftDate(shiftDate)
+                .startTime(LocalTime.of(8, 0))
+                .endTime(LocalTime.of(16, 0))
+                .status(status)
+                .build();
+    }
 }
