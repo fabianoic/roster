@@ -299,6 +299,16 @@ public class ShiftServiceTest {
     }
 
     @Test
+    void testSwapShift_shiftCanceled() {
+        UUID unknownEmployeeId = UUID.randomUUID();
+        when(shiftRepository.findById(id)).thenReturn(Optional.of(Shift.builder().status(ShiftStatus.CANCELED).build()));
+
+        assertThrows(OperationException.class, () -> shiftService.swapShiftEmployee(id, unknownEmployeeId));
+        verify(employeeService, never()).isEligibleForShift(any(), any());
+        verify(shiftRepository, never()).save(any());
+    }
+
+    @Test
     void mustReturnAListOfCandidatesToSwapShift() {
         List<Employee> candidates = List.of(
                 Employee.builder().id(UUID.randomUUID()).name("Name example 1").build(),
@@ -380,5 +390,74 @@ public class ShiftServiceTest {
 
         assertEquals(0, result);
         verify(shiftRepository).updateShiftStatusBeforeShiftDate(ShiftStatus.SCHEDULED, ShiftStatus.COMPLETED, LocalDateTime.now(), LocalDate.of(2026, 12, 31));
+    }
+
+    @Test
+    void mustThrowOperationExceptionWhenShiftIsCompleted() {
+        Store newStore = new Store();
+        newStore.setId(UUID.randomUUID());
+        Shift newShift = new Shift(
+                id,
+                employee,
+                newStore,
+                LocalDate.now(),
+                LocalTime.of(10, 0),
+                LocalTime.of(18, 0),
+                ShiftStatus.SCHEDULED,
+                LocalDateTime.now(),
+                LocalDateTime.now());
+
+        when(shiftRepository.findById(any(UUID.class))).thenReturn(Optional.of(Shift.builder().status(ShiftStatus.COMPLETED).build()));
+
+        assertThrows(OperationException.class, () -> shiftService.updateShiftInfo(id, newShift));
+    }
+
+    @Test
+    void mustThrowOperationExceptionWhenNewShiftStatusIsCompleted() {
+        Store newStore = new Store();
+        newStore.setId(UUID.randomUUID());
+        Shift newShift = new Shift(
+                id,
+                employee,
+                newStore,
+                LocalDate.now(),
+                LocalTime.of(10, 0),
+                LocalTime.of(18, 0),
+                ShiftStatus.COMPLETED,
+                LocalDateTime.now(),
+                LocalDateTime.now());
+
+        when(shiftRepository.findById(any(UUID.class))).thenReturn(Optional.of(Shift.builder().status(ShiftStatus.SCHEDULED).build()));
+
+        assertThrows(OperationException.class, () -> shiftService.updateShiftInfo(id, newShift));
+    }
+
+    @Test
+    void mustUpdateShiftToCanceled() {
+        Store newStore = new Store();
+        newStore.setId(UUID.randomUUID());
+        Shift newShift = new Shift(
+                id,
+                employee,
+                newStore,
+                LocalDate.now(),
+                LocalTime.of(8, 0),
+                LocalTime.of(16, 0),
+                ShiftStatus.CANCELED,
+                LocalDateTime.now(),
+                LocalDateTime.now());
+        when(shiftRepository.findById(any(UUID.class))).thenReturn(Optional.of(Shift.builder().status(ShiftStatus.SCHEDULED).build()));
+        when(shiftRepository.save(any(Shift.class))).thenReturn(newShift);
+
+        Shift updatedShift = shiftService.updateShiftInfo(id, newShift);
+
+        assertNotNull(updatedShift);
+        assertEquals(ShiftStatus.CANCELED, updatedShift.getStatus());
+        assertEquals(employee.getId(), updatedShift.getEmployee().getId());
+        assertEquals(LocalTime.of(8, 0), updatedShift.getStartTime());
+        assertEquals(LocalTime.of(16, 0), updatedShift.getEndTime());
+        verify(shiftRepository, times(1)).findById(any());
+        verify(shiftRepository, times(1)).save(any());
+        verify(storeService, times(0)).retrieveStoreById(any());
     }
 }
